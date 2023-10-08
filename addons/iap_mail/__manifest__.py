@@ -13,7 +13,7 @@
         'mail',
     ],
     'installable': True,
-    'auto_install': True,
+    'auto_install': False,
     'data': [
         'data/mail_templates.xml',
     ],
