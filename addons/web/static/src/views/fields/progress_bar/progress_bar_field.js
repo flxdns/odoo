@@ -54,7 +54,7 @@ export class ProgressBarField extends Component {
         return this.props.isEditable && !this.props.readonly;
     }
     get isPercentage() {
-        return !this.props.maxValueField || !isNaN(this.props.maxValueField);
+        return !this.props.maxValueField || !isNaN(this.props.maxValueField) || this.props.record.data[this.maxValueField] === 100;
     }
 
     get currentValue() {
