@@ -354,8 +354,8 @@ class ChannelMember(models.Model):
             self.channel_id.message_post(body=_("%s started a live conference", self.partner_id.name or self.guest_id.name), message_type='notification')
             self._rtc_invite_members()
 
-    def _join_sfu(self, ice_servers=None):
-        if len(self.channel_id.rtc_session_ids) < SFU_MODE_THRESHOLD:
+    def _join_sfu(self, ice_servers=None, force=False):
+        if len(self.channel_id.rtc_session_ids) < SFU_MODE_THRESHOLD and not force:
             if self.channel_id.sfu_channel_uuid:
                 self.channel_id.sfu_channel_uuid = None
                 self.channel_id.sfu_server_url = None
@@ -436,10 +436,15 @@ class ChannelMember(models.Model):
         :param list member_ids: List of the partner ids to invite.
         """
         self.ensure_one()
+        recent_guest_ids = self.env["bus.presence"].sudo().search([
+            ("guest_id", "in", self.channel_id.channel_member_ids.guest_id.ids),
+            ("last_poll", ">", fields.Datetime.now() - timedelta(hours=12))
+        ]).guest_id
         domain = [
             ('channel_id', '=', self.channel_id.id),
             ('rtc_inviting_session_id', '=', False),
             ('rtc_session_ids', '=', False),
+            "|", ("guest_id", "=", False), ("guest_id", "in", recent_guest_ids.ids),
         ]
         if member_ids:
             domain = expression.AND([domain, [('id', 'in', member_ids)]])

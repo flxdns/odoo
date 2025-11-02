@@ -98,7 +98,7 @@ class AccountMoveLine(models.Model):
         inverse='_inverse_account_id',
         index=False,  # covered by account_move_line_account_id_date_idx defined in init()
         auto_join=True,
-        ondelete="cascade",
+        ondelete="restrict",
         domain="[('deprecated', '=', False), ('account_type', '!=', 'off_balance')]",
         check_company=True,
         tracking=True,
@@ -1074,21 +1074,31 @@ class AccountMoveLine(models.Model):
             if line.display_type == 'product' or not line.move_id.is_invoice(include_receipts=True):
                 related_distribution = line._related_analytic_distribution()
                 root_plans = self.env['account.analytic.account'].browse(
-                    list({int(account_id) for ids in related_distribution for account_id in ids.split(',')})
+                    list({int(account_id) for ids in related_distribution for account_id in ids.split(',') if account_id.strip()})
                 ).exists().root_plan_id
 
-                arguments = frozendict({
-                    "product_id": line.product_id.id,
-                    "product_categ_id": line.product_id.categ_id.id,
-                    "partner_id": line.partner_id.id,
-                    "partner_category_id": line.partner_id.category_id.ids,
-                    "account_prefix": line.account_id.code,
-                    "company_id": line.company_id.id,
-                    "related_root_plan_ids": root_plans,
-                })
+                arguments = frozendict(line._get_analytic_distribution_arguments(root_plans))
                 if arguments not in cache:
                     cache[arguments] = self.env['account.analytic.distribution.model']._get_distribution(arguments)
                 line.analytic_distribution = related_distribution | cache[arguments] or line.analytic_distribution
+
+    def _get_analytic_distribution_arguments(self, root_plans):
+        """
+        Get arguments to determine analytic distribution.
+        This function aims to be overridden by partner submodules
+        :param root_plans: account.analytic.plan recordset
+        :return: dict
+        """
+        arguments = {
+            "product_id": self.product_id.id,
+            "product_categ_id": self.product_id.categ_id.id,
+            "partner_id": self.partner_id.id,
+            "partner_category_id": self.partner_id.category_id.ids,
+            "account_prefix": self.account_id.code,
+            "company_id": self.company_id.id,
+            "related_root_plan_ids": root_plans,
+        }
+        return arguments
 
     @api.depends('discount_date', 'date_maturity')
     def _compute_payment_date(self):
@@ -1587,6 +1597,7 @@ class AccountMoveLine(models.Model):
         line_to_write = self
         vals = self._sanitize_vals(vals)
         matching2lines = None
+        tax_lock_check_ids = []
         for line in self:
             if not any(self.env['account.move']._field_will_change(line, vals, field_name) for field_name in vals):
                 line_to_write -= line
@@ -1601,7 +1612,7 @@ class AccountMoveLine(models.Model):
 
             # Check the tax lock date.
             if line.parent_state == 'posted' and any(self.env['account.move']._field_will_change(line, vals, field_name) for field_name in protected_fields['tax']):
-                line._check_tax_lock_date()
+                tax_lock_check_ids.append(line.id)
 
             # Check the reconciliation.
             if changing_fields := {
@@ -1620,6 +1631,8 @@ class AccountMoveLine(models.Model):
                     or line.matching_number and not all(reconciled_line in self for reconciled_line in matching2lines[line.matching_number])
                 ):
                     line._check_reconciliation()
+
+        self.browse(tax_lock_check_ids)._check_tax_lock_date()
 
         move_container = {'records': self.move_id}
         with self.move_id._check_balanced(move_container),\
@@ -1655,6 +1668,9 @@ class AccountMoveLine(models.Model):
             if any(field in vals for field in ['account_id', 'currency_id']):
                 self._check_constrains_account_id_journal_id()
 
+            # double check modified lines in case a tax field was changed on a line that didn't previously affect tax
+            self.browse(tax_lock_check_ids)._check_tax_lock_date()
+
             if not self.env.context.get('tracking_disable', False):
                 # Log changes to move lines on each move
                 for move_id, modified_lines in move_initial_values.items():
@@ -1666,7 +1682,7 @@ class AccountMoveLine(models.Model):
                                 body=msg,
                                 tracking_value_ids=tracking_value_ids
                             )
-            if not self.env.context.get('skip_analytic_sync'):
+            if 'analytic_line_ids' in vals:
                 self.filtered(lambda l: l.parent_state == 'draft').analytic_line_ids.with_context(skip_analytic_sync=True).unlink()
 
         return result

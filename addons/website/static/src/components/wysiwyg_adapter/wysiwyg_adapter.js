@@ -753,7 +753,7 @@ export class WysiwygAdapterComponent extends Wysiwyg {
         // TODO we should investigate if this is normal the websiteRootInstance
         // is being accessed while being dead following a wysiwyg adapter event.
         if (!websiteRootInstance) {
-            if (eventData.onFailure) {
+            if (eventData.onFailure && !eventData.onSuccess) {
                 return eventData.onFailure();
             }
             return false;
@@ -1422,5 +1422,20 @@ export class WysiwygAdapterComponent extends Wysiwyg {
             return;
         }
         this._hideDropdowns();
+    }
+    /**
+     * @override
+     */
+    async _onMediaDialogSave(params, element) {
+        await super._onMediaDialogSave(...arguments);
+        // This wasn't needed before activating the "iframe video" public widget
+        // in the edit mode. It should allow destroying newly added iframes and
+        // prevent saving them in the DOM.
+        if (element.classList.contains("media_iframe_video")) {
+            this._websiteRootEvent("widgets_start_request", {
+                editableMode: true,
+                $target: $(element),
+            });
+        }
     }
 }
