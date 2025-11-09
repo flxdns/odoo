@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-11 13:57+0000\n"
+"POT-Creation-Date: 2025-10-08 18:38+0000\n"
 "PO-Revision-Date: 2025-09-16 15:24+0000\n"
 "Last-Translator: \"Tiffany Chang (tic)\" <tic@odoo.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://translate.odoo.com/"
@@ -43,20 +43,15 @@ msgstr "%spx （建议）"
 msgid ""
 "'Alt tag' specifies an alternate text for an image, if the image cannot be "
 "displayed (slow connection, missing image, screen reader ...)."
-msgstr "如果无法显示图像，则'Alt tag' "
-"指定图像的替代文本（连接速度慢，图像丢失，屏幕阅读器......）。"
+msgstr ""
+"如果无法显示图像，则'Alt tag' 指定图像的替代文本（连接速度慢，图像丢失，屏幕"
+"阅读器......）。"
 
 #. module: html_builder
 #. odoo-javascript
 #: code:addons/html_builder/static/src/plugins/image/image_tool_option.xml:0
 msgid "'Title tag' is shown as a tooltip when you hover the picture."
 msgstr "'标题标签' 当您移动鼠标到图片上面悬停的时候显示标记说明."
-
-#. module: html_builder
-#. odoo-javascript
-#: code:addons/html_builder/static/src/sidebar/option_container.xml:0
-msgid "ACCESS OPTIONS ANYWAY"
-msgstr "无论如何访问选项"
 
 #. module: html_builder
 #. odoo-javascript
@@ -760,6 +755,7 @@ msgstr "磨砂"
 
 #. module: html_builder
 #. odoo-javascript
+#: code:addons/html_builder/static/src/core/building_blocks/color_picker_theme_tab.xml:0
 #: code:addons/html_builder/static/src/utils/utils.js:0
 msgid "Button"
 msgstr "按钮"
@@ -1194,8 +1190,9 @@ msgstr "移除这字体"
 msgid ""
 "Deleting a font requires a reload of the page. This will save all your "
 "changes and reload the page, are you sure you want to proceed?"
-msgstr "删除字体需要重新加载网页。这将保存您的所有更改并重新加载网页，您确定要继续吗"
-"？"
+msgstr ""
+"删除字体需要重新加载网页。这将保存您的所有更改并重新加载网页，您确定要继续"
+"吗？"
 
 #. module: html_builder
 #. odoo-javascript
@@ -1340,6 +1337,7 @@ msgstr "早鸟儿"
 #. module: html_builder
 #. odoo-javascript
 #: code:addons/html_builder/static/src/core/anchor/anchor_plugin.js:0
+#: code:addons/html_builder/static/src/core/building_blocks/color_picker_theme_tab.xml:0
 msgid "Edit"
 msgstr "编辑"
 
@@ -1868,6 +1866,18 @@ msgstr "关于此应用的更多信息。"
 
 #. module: html_builder
 #. odoo-javascript
+#: code:addons/html_builder/static/src/core/move_plugin.js:0
+msgid "Move left"
+msgstr ""
+
+#. module: html_builder
+#. odoo-javascript
+#: code:addons/html_builder/static/src/core/move_plugin.js:0
+msgid "Move right"
+msgstr ""
+
+#. module: html_builder
+#. odoo-javascript
 #: code:addons/html_builder/static/src/plugins/image/image_filter_option.xml:0
 msgid "Multiply"
 msgstr ""
@@ -2108,12 +2118,6 @@ msgstr ""
 #: code:addons/html_builder/static/src/plugins/image/image_format_option.xml:0
 msgid "Quality"
 msgstr "质量"
-
-#. module: html_builder
-#. odoo-javascript
-#: code:addons/html_builder/static/src/sidebar/option_container.xml:0
-msgid "REPLACE BY NEW VERSION"
-msgstr "更换为新版本"
 
 #. module: html_builder
 #. odoo-javascript
@@ -2736,6 +2740,12 @@ msgstr ""
 
 #. module: html_builder
 #. odoo-javascript
+#: code:addons/html_builder/static/src/core/building_blocks/color_picker_theme_tab.xml:0
+msgid "Text"
+msgstr ""
+
+#. module: html_builder
+#. odoo-javascript
 #: code:addons/html_builder/static/src/core/anchor/anchor_dialog.xml:0
 msgid "The chosen name already exists"
 msgstr "所选名称已存在"
@@ -2743,6 +2753,7 @@ msgstr "所选名称已存在"
 #. module: html_builder
 #. odoo-javascript
 #: code:addons/html_builder/static/src/builder.js:0
+#: code:addons/html_builder/static/src/core/building_blocks/color_picker_theme_tab.js:0
 msgid "Theme"
 msgstr "主题"
 
@@ -2755,12 +2766,6 @@ msgstr "此区块不能拖拽到此页面的任何位置"
 
 #. module: html_builder
 #. odoo-javascript
-#: code:addons/html_builder/static/src/sidebar/option_container.xml:0
-msgid "This block is outdated."
-msgstr "该块已过时。"
-
-#. module: html_builder
-#. odoo-javascript
 #: code:addons/html_builder/static/src/core/building_blocks/builder_fontfamilypicker.xml:0
 msgid "This font is hosted and served to your visitors by Google servers"
 msgstr "此字体由谷歌服务器托管并提供给您的访客"
@@ -2769,6 +2774,12 @@ msgstr "此字体由谷歌服务器托管并提供给您的访客"
 #. odoo-javascript
 #: code:addons/html_builder/static/src/plugins/rating_option.xml:0
 msgid "Thumbs"
+msgstr ""
+
+#. module: html_builder
+#. odoo-javascript
+#: code:addons/html_builder/static/src/core/building_blocks/color_picker_theme_tab.xml:0
+msgid "Title"
 msgstr ""
 
 #. module: html_builder
@@ -2867,6 +2878,12 @@ msgstr "类型"
 #: code:addons/html_builder/static/src/plugins/image/image_tool_option.xml:0
 msgid "Unalign"
 msgstr "取消对齐"
+
+#. module: html_builder
+#. odoo-javascript
+#: code:addons/html_builder/static/src/core/building_blocks/builder_many2one.xml:0
+msgid "Unselect"
+msgstr ""
 
 #. module: html_builder
 #. odoo-javascript
@@ -3028,6 +3045,12 @@ msgstr ""
 
 #. module: html_builder
 #. odoo-javascript
+#: code:addons/html_builder/static/src/plugins/image/image_format_option.xml:0
+msgid "WebP compression not supported on this browser"
+msgstr ""
+
+#. module: html_builder
+#. odoo-javascript
 #: code:addons/html_builder/static/src/plugins/background_option/background_position_option.xml:0
 #: code:addons/html_builder/static/src/plugins/separator_option.xml:0
 #: code:addons/html_builder/static/src/plugins/width_option.xml:0
@@ -3054,21 +3077,9 @@ msgstr "是"
 
 #. module: html_builder
 #. odoo-javascript
-#: code:addons/html_builder/static/src/sidebar/option_container.xml:0
-msgid "You can still access the block options but it might be ineffective."
-msgstr "您仍然可以访问阻止选项，但它可能无效。"
-
-#. module: html_builder
-#. odoo-javascript
 #: code:addons/html_builder/static/src/core/building_blocks/builder_list.xml:0
 msgid "You don't have any record to add"
 msgstr ""
-
-#. module: html_builder
-#. odoo-javascript
-#: code:addons/html_builder/static/src/sidebar/option_container.xml:0
-msgid "You might not be able to customize it anymore."
-msgstr "您可能无法再自定义它。"
 
 #. module: html_builder
 #. odoo-javascript
@@ -3203,3 +3214,18 @@ msgstr "⌙ 有效"
 #: code:addons/html_builder/static/src/plugins/rating_option.xml:0
 msgid "⌙ Inactive"
 msgstr "⌙ 停用"
+
+#~ msgid "ACCESS OPTIONS ANYWAY"
+#~ msgstr "无论如何访问选项"
+
+#~ msgid "REPLACE BY NEW VERSION"
+#~ msgstr "更换为新版本"
+
+#~ msgid "This block is outdated."
+#~ msgstr "该块已过时。"
+
+#~ msgid "You can still access the block options but it might be ineffective."
+#~ msgstr "您仍然可以访问阻止选项，但它可能无效。"
+
+#~ msgid "You might not be able to customize it anymore."
+#~ msgstr "您可能无法再自定义它。"

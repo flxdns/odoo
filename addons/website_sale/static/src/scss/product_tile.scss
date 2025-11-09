@@ -588,6 +588,9 @@
         --o-wsale-card-thumb-min-heigh: 100%;
         --o-wsale-card-thumb-size: min(13rem, 30vw);
         --o-wsale-card-thumb-border-radius: #{$-br-top} 0 0 #{$-br-top};
+        /* rtl:raw:
+          --o-wsale-card-thumb-border-radius: 0 #{$-br-top} #{$-br-top} 0;
+        */
         --o-wsale-card-thumb-position: center;
         --o-wsale-card-sub-display: contents;
         --o-wsale-card-info-margin: 0px;
@@ -744,9 +747,9 @@
     --o-wsale-card-offset-x: 3%;
     --o-wsale-card-overlay: "";
     --o-wsale-card-overlay-background: linear-gradient(-120deg,
-        rgba(var(--o-wsale-card-cc-bg-rgb), .35),
-        rgba(var(--o-wsale-card-cc-bg-rgb), .35),
-        rgba(var(--o-wsale-card-cc-bg-rgb), .46)
+        rgba(var(--o-wsale-card-cc-bg-rgb), .55),
+        rgba(var(--o-wsale-card-cc-bg-rgb), .55),
+        rgba(var(--o-wsale-card-cc-bg-rgb), .66)
     );
 
     // o_label equivalent
@@ -1042,27 +1045,37 @@ $_wsale_products_roundness_map: (
                 flex-shrink: 0;
                 scroll-snap-stop: always;
                 scroll-snap-align: start;
+            }
+        }
 
-                &:before, &:after {
-                    content: "";
-                    @include o-position-absolute($bottom: .5rem, $left: 50%);
-                    display: var(--o-wsale-card-img-wrapper-secondary-display, block);
-                    height: .5rem;
-                    aspect-ratio: 1;
-                    border-radius: 100em;
-                    background-color: black;
-                    transform: translateX(-80%);
-                    outline: 1px solid white;
-                    z-index: 1;
-                }
-                &:after {
-                    transform: translateX(80%);
-                }
+        .oe_product_image:has(.oe_product_image_link_has_secondary) {
+            &:before, &:after {
+                content: "";
+                @include o-position-absolute($bottom: .5rem, $left: 50%);
+                display: var(--o-wsale-card-img-wrapper-secondary-display, block);
+                height: .5rem;
+                aspect-ratio: 1;
+                border-radius: 100em;
+                background-color: black;
+                transform: translateX(-80%);
+                outline: 1px solid white;
+                z-index: 1;
+            }
 
-                &.oe_product_image_img_wrapper_primary:after,
-                &.oe_product_image_img_wrapper_secondary:before {
+            &:after {
+                transform: translateX(80%);
+                background-color: rgba(black, .5);
+                outline-color: rgba(white, .25);
+            }
+
+            &:has(.o_product_tile_scrolled) {
+                &:before {
                     background-color: rgba(black, .5);
                     outline-color: rgba(white, .25);
+                }
+                &:after {
+                    background-color: black;
+                    outline-color: white;
                 }
             }
         }

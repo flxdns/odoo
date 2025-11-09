@@ -225,6 +225,7 @@ class StockPicking(models.Model):
                 return new_batch
 
         # If nothing was found after those two steps, then create a batch with the current picking alone
+        new_batch_data['user_id'] = self.user_id.id
         new_batch = self.env['stock.picking.batch'].sudo().create(new_batch_data)
         if self.picking_type_id.batch_auto_confirm:
             new_batch.action_confirm()
@@ -300,6 +301,10 @@ class StockPicking(models.Model):
 
     def _is_single_transfer(self):
         return super()._is_single_transfer() or len(self.batch_id) == 1
+
+    def _add_to_wave_post_picking_split_hook(self):
+        # Hook meant to be overriden
+        pass
 
     def assign_batch_user(self, user_id):
         pickings = self.filtered(lambda p: p.user_id.id != user_id)

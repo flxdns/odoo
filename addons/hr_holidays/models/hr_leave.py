@@ -18,7 +18,7 @@ from odoo.tools.date_utils import float_to_time
 from odoo.fields import Command, Date, Domain
 from odoo.tools.float_utils import float_round, float_compare
 from odoo.tools.intervals import Intervals
-from odoo.tools.misc import format_date
+from odoo.tools.misc import clean_context, format_date
 from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
@@ -257,16 +257,14 @@ class HrLeave(models.Model):
         env_company_calendar = self.env.company.resource_calendar_id
         for leave in self:
             calendar = leave.resource_calendar_id or env_company_calendar
-            if not (leave.request_unit_hours
-                and leave.employee_id
-                and leave.request_date_from
-                and leave.request_date_to
-                and calendar):
-                continue
-
-            hour_from, hour_to = leave._get_hour_from_to(leave.request_date_from, leave.request_date_to)
-            leave.request_hour_from = hour_from
-            leave.request_hour_to = hour_to
+            if (not leave.request_unit_hours
+                    and leave.employee_id
+                    and leave.request_date_from
+                    and leave.request_date_to
+                    and calendar):
+                hour_from, hour_to = leave._get_hour_from_to(leave.request_date_from, leave.request_date_to)
+                leave.request_hour_from = hour_from
+                leave.request_hour_to = hour_to
 
     @api.depends('employee_id', 'leave_type_request_unit', 'request_date_from', 'request_date_to',
             'request_hour_from', 'request_hour_to', 'request_date_from_period', 'request_date_to_period')
@@ -349,34 +347,42 @@ class HrLeave(models.Model):
         query = self.sudo()._search(domain)
         return Domain('id', 'in', query)
 
-    @api.depends('employee_id')
+    @api.depends('employee_id', 'request_date_from', 'request_date_to')
     def _compute_resource_calendar_id(self):
-        # YTI TODO: Clean that brol to improve performance
+        leaves_without_emp_or_date = self.filtered(
+            lambda leave: not (leave.employee_id and leave.request_date_from and leave.request_date_to)
+        )
+        valid_leaves = self - leaves_without_emp_or_date
+        leaves_without_emp_or_date.resource_calendar_id = self.env.company.resource_calendar_id
+        if not valid_leaves:
+            return
         employees_by_dates = defaultdict(lambda: self.env['hr.employee'])
-        for leave in self:
-            if leave.employee_id and leave.request_date_from:
-                employees_by_dates[leave.request_date_from] += leave.employee_id
+        contracts_by_employee = dict(
+            self.env['hr.version']._read_group(
+                domain=[('employee_id', 'in', self.employee_id.ids)],
+                groupby=['employee_id'],
+                aggregates=['id:recordset']
+            )
+        )
+        for leave in valid_leaves:
+            employees_by_dates[leave.request_date_from] += leave.employee_id
         calendar_by_dates = {date_from: employees._get_calendars(date_from) for date_from, employees in employees_by_dates.items()}
-        for leave in self:
-            calendar = False
-            if leave.employee_id and leave.request_date_from:
-                calendar = calendar_by_dates[leave.request_date_from][leave.employee_id.id]
-            leave.resource_calendar_id = calendar or self.env.company.resource_calendar_id
-        for leave in self:
+        for leave in valid_leaves:
+            calendar = calendar_by_dates.get(leave.request_date_from, {}).get(leave.employee_id.id) \
+                        or self.env.company.resource_calendar_id
             # We use the request dates to find the contracts, because date_from
             # and date_to are not set yet at this point. Since these dates are
             # used to get the contracts for which these leaves apply and
             # contract start- and end-dates are just dates (and not datetimes)
             # these dates are comparable.
-            if not leave.employee_id:
-                continue
-            contracts = self.env['hr.version'].search([('employee_id', '=', leave.employee_id.id)]).filtered(
+            contracts = contracts_by_employee.get(leave.employee_id, self.env['hr.version']).filtered(
                 lambda c: c.date_start <= leave.request_date_to and
                           (not c.date_end or c.date_end >= leave.request_date_from))
             if contracts:
                 # If there are more than one contract they should all have the
                 # same calendar, otherwise a constraint is violated.
-                leave.resource_calendar_id = contracts[:1].resource_calendar_id
+                calendar = contracts[:1].resource_calendar_id
+            leave.resource_calendar_id = calendar
 
     def _get_overlapping_contracts(self):
         self.ensure_one()
@@ -1001,15 +1007,17 @@ Versions:
         meeting_holidays = holidays.filtered(lambda l: l.holiday_status_id.create_calendar_meeting)
         meetings = self.env['calendar.event']
         if meeting_holidays:
+            Meeting = self.env['calendar.event']
+            Meeting.check_access('create')
             meeting_values_for_user_id = meeting_holidays._prepare_holidays_meeting_values()
             Meeting = self.env['calendar.event']
             for user_id, meeting_values in meeting_values_for_user_id.items():
-                meetings += Meeting.with_user(user_id or self.env.uid).with_context(
+                meetings += Meeting.with_user(user_id or self.env.uid).sudo().with_context(clean_context({**self.env.context, **dict(
                                 allowed_company_ids=[],
                                 no_mail_to_attendees=True,
                                 calendar_no_videocall=True,
                                 active_model=self._name
-                            ).create(meeting_values)
+                            )})).create(meeting_values)
         Holiday = self.env['hr.leave']
         for meeting in meetings:
             Holiday.browse(meeting.res_id).meeting_id = meeting

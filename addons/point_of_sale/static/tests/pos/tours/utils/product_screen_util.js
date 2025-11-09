@@ -6,7 +6,7 @@ import * as TextInputPopup from "@point_of_sale/../tests/generic_helpers/text_in
 import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
 import * as Chrome from "@point_of_sale/../tests/pos/tours/utils/chrome_util";
 import { LONG_PRESS_DURATION } from "@point_of_sale/utils";
-import { queryFirst } from "@odoo/hoot-dom";
+import * as PaymentScreen from "@point_of_sale/../tests/pos/tours/utils/payment_screen_util";
 
 export function firstProductIsFavorite(name) {
     return [
@@ -648,6 +648,9 @@ export function searchProduct(string) {
         },
     ];
 }
+export function subtotalAmountIs(amount) {
+    return inLeftSide(...Order.hasSubtotal(amount));
+}
 export function totalAmountIs(amount) {
     return inLeftSide(...Order.hasTotal(amount));
 }
@@ -773,18 +776,7 @@ export function closePos() {
 
 export function finishOrder() {
     return [
-        {
-            isActive: ["desktop"],
-            content: "validate the order",
-            trigger: ".payment-screen .button.next.highlight:visible",
-            run: "click",
-        },
-        {
-            isActive: ["mobile"],
-            content: "validate the order",
-            trigger: ".payment-screen .btn-switchpane:contains('Validate')",
-            run: "click",
-        },
+        ...PaymentScreen.clickValidate(),
         Chrome.isSyncStatusConnected(),
         {
             isActive: ["desktop"],
@@ -955,14 +947,13 @@ export function longPressProduct(productName) {
     return [
         {
             content: `Long pressing product "${productName}"...`,
-            trigger: `.product-name:contains("${productName}")`,
-            run: async () => {
-                const el = document.querySelector(".product-name");
+            trigger: `.product-list .product-name:contains("${productName}")`,
+            run: async (el) => {
                 const mouseDown = new MouseEvent("mousedown", { bubbles: true });
                 const mouseUp = new MouseEvent("mouseup", { bubbles: true });
-                el.dispatchEvent(mouseDown);
+                el.anchor.dispatchEvent(mouseDown);
                 await new Promise((resolve) => setTimeout(resolve, LONG_PRESS_DURATION + 50));
-                el.dispatchEvent(mouseUp);
+                el.anchor.dispatchEvent(mouseUp);
             },
         },
     ];
@@ -998,7 +989,7 @@ export function longPressOrderline(productName, delay = 500) {
         {
             content: `long press on orderline with product '${productName}'`,
             trigger: `.order-container .orderline:has(.product-name:contains("${productName}"))`,
-            run: async () => {
+            run: async ({ queryFirst }) => {
                 const el = queryFirst`.order-container .orderline:has(.product-name:contains("${productName}"))`;
                 if (!el) {
                     throw new Error(`Orderline with product '${productName}' not found`);

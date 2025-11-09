@@ -1440,7 +1440,10 @@ test("onchange for embedded one2many with handle widget (more records)", async (
     await contains('.o_list_renderer div[name="turtle_foo"] input').edit("blurp");
 
     // Drag and drop the third line in second position
-    await contains("tbody tr:eq(2) .o_handle_cell").dragAndDrop("tbody tr:eq(1)");
+    // TODO JUM: PRHOOT the events
+    const { drop, moveTo } = await contains("tbody tr:eq(2) .o_handle_cell").drag();
+    await moveTo(`tbody tr:eq(1)`);
+    await drop(document.body);
 
     // need to unselect row...
     expect(queryAllTexts(".o_data_cell.o_list_char")).toEqual(["blurp", "kawa", "blip"]);
@@ -3657,6 +3660,56 @@ test("one2many kanban: conditional create/delete actions", async () => {
     expect(".modal .modal-footer .o_btn_remove").toHaveCount(0, {
         message: "There should not be a Remove Button as bar field is False",
     });
+});
+
+test("one2many kanban: conditional write action", async () => {
+    Partner._records[0].p = [2, 4];
+
+    await mountView({
+        type: "form",
+        resModel: "partner",
+        arch: `
+            <form>
+                <field name="bar"/>
+                <field name="p" options="{'write': [('bar', '=', True)]}">
+                    <kanban>
+                        <templates>
+                            <t t-name="card">
+                                <field name="name"/>
+                                <field name="bar" widget="boolean_toggle"/>
+                            </t>
+                        </templates>
+                    </kanban>
+                    <form>
+                        <field name="name"/>
+                        <field name="foo"/>
+                    </form>
+                </field>
+            </form>`,
+        resId: 1,
+    });
+
+    expect(".o_kanban_record:first span").toHaveText("second record");
+    expect(".o_field_widget[name=bar]:first input").toBeChecked();
+
+    // bar is initially true -> edit action is available
+    expect(".o_kanban_record:first .o_field_widget[name=bar] input").toBeEnabled();
+    expect(".o-kanban-button-new").toHaveCount(1); // can create
+    await contains(".o_kanban_record:first").click();
+    expect(".o_dialog .o_form_renderer").toHaveClass("o_form_editable");
+    await contains(".o_dialog .o_field_widget[name=name] input").edit("second record edited");
+    await contains(".modal .o_form_button_save").click();
+    expect(".o_kanban_record:first span").toHaveText("second record edited");
+
+    // set bar false -> edit action is no longer available
+    await contains('.o_field_widget[name="bar"] input').click();
+    expect(".o_kanban_record:first .o_field_widget[name=bar] input").not.toBeEnabled();
+    expect(".o-kanban-button-new").toHaveCount(1); // can still create
+    await contains(".o_kanban_record:first").click();
+    expect(".o_dialog .o_form_renderer").toHaveClass("o_form_readonly");
+    expect(".o_dialog .o_form_button_save").toHaveCount(0);
+    await contains(".modal .o_form_button_cancel").click();
+    expect(".o_dialog").toHaveCount(0);
 });
 
 test.tags("desktop");
@@ -8489,7 +8542,10 @@ test("one2many with sequence field and text field", async () => {
 
     expect(".ui-sortable-handle").toHaveCount(3);
 
-    await contains("tbody tr:eq(1) .o_handle_cell").dragAndDrop("tbody tr:eq(0)");
+    // TODO JUM: PRHOOT the events
+    const { drop, moveTo } = await contains("tbody tr:eq(1) .o_handle_cell").drag();
+    await moveTo("tbody tr:eq(0)");
+    await drop(document.body);
 
     // empty line has been discarded on the drag and drop)
     expect(queryAllTexts(".o_data_cell.o_list_char")).toEqual([inputText2, inputText1]);

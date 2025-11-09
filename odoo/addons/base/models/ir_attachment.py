@@ -378,7 +378,10 @@ class IrAttachment(models.Model):
                     nw, nh = map(int, max_resolution.split('x'))
                     if w > nw or h > nh:
                         img = img.resize(nw, nh)
-                        quality = int(ICP('base.image_autoresize_quality', 80))
+                        if _subtype == 'jpeg':  # Do not affect PNGs color palette
+                            quality = int(ICP('base.image_autoresize_quality', 80))
+                        else:
+                            quality = 0
                         image_data = img.image_quality(quality=quality)
                         if is_raw:
                             values['raw'] = image_data
@@ -924,6 +927,10 @@ class IrAttachment(models.Model):
             stream.size = 0
 
         return stream
+
+    def _is_remote_source(self):
+        self.ensure_one()
+        return self.url and not self.file_size and self.url.startswith(('http://', 'https://', 'ftp://'))
 
     def _can_return_content(self, field_name=None, access_token=None):
         attachment_sudo = self.sudo().with_context(prefetch_fields=False)

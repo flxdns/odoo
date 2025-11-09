@@ -128,6 +128,17 @@ export class TablePlugin extends Plugin {
         move_node_whitelist_selectors: "table",
         collapsed_selection_toolbar_predicate: (selectionData) =>
             !!closestElement(selectionData.editableSelection.anchorNode, ".o_selected_td"),
+        selection_blocker_predicates: (node) => {
+            if (node.nodeName === "TABLE") {
+                return true;
+            }
+        },
+        selection_placeholder_container_predicates: (container) => {
+            if (container.nodeName === "TABLE") {
+                return false;
+            }
+        },
+        normalize_handlers: this.distributeTableColorsToAllCells.bind(this),
     };
 
     setup() {
@@ -180,6 +191,27 @@ export class TablePlugin extends Plugin {
             this.shiftCursorToTableCell(-1);
             return true;
         }
+    }
+
+    /**
+     * Inherits table-level colors to all child tds to make it
+     * easier to add/remove style on tables.
+     *
+     * @param {Element} root
+     */
+    distributeTableColorsToAllCells(root) {
+        [...root.querySelectorAll("table")]
+            .filter((table) => table.style["color"] || table.style["backgroundColor"])
+            .forEach((table) => {
+                const tds = table.querySelectorAll("td");
+                for (const td of tds) {
+                    td.style["color"] = td.style["color"] || table.style["color"];
+                    td.style["backgroundColor"] =
+                        td.style["backgroundColor"] || table.style["backgroundColor"];
+                }
+                table.style["color"] = "";
+                table.style["backgroundColor"] = "";
+            });
     }
 
     createTable({ rows = 2, cols = 2 } = {}) {
@@ -759,14 +791,18 @@ export class TablePlugin extends Plugin {
                 // To solve the issue we merge the ranges of the selection together the first time we find
                 // selection.rangeCount > 1. Morover, when hitting a double click on a cell, it spans a row
                 // inside selection which needs to be simplified here.
-                const [anchorNode, anchorOffset] = getDeepestPosition(
+                let [anchorNode, anchorOffset] = getDeepestPosition(
                     selection.getRangeAt(0).startContainer,
                     selection.getRangeAt(0).startOffset
                 );
-                const [focusNode, focusOffset] = getDeepestPosition(
+                let [focusNode, focusOffset] = getDeepestPosition(
                     selection.getRangeAt(selection.rangeCount - 1).startContainer,
                     selection.getRangeAt(selection.rangeCount - 1).startOffset
                 );
+                if (this.selectionDirection === "backward") {
+                    [anchorNode, focusNode] = [focusNode, anchorNode];
+                    [anchorOffset, focusOffset] = [focusOffset, anchorOffset];
+                }
                 this.dependencies.selection.setSelection({
                     anchorNode,
                     anchorOffset,
@@ -790,6 +826,7 @@ export class TablePlugin extends Plugin {
                     focusNode: ev.target,
                     focusOffset: 0,
                 });
+                this.selectionDirection = selection.direction;
                 return true;
             }
         }
@@ -1070,12 +1107,13 @@ export class TablePlugin extends Plugin {
         const startTd = closestElement(selection.startContainer, isTableCell);
         const endTd = closestElement(selection.endContainer, isTableCell);
         if (startTd && startTd === endTd && !isProtected(startTd) && !isProtecting(startTd)) {
-            const targetedNodes = this.dependencies.selection.getTargetedNodes();
+            const selectedNodes = this.dependencies.selection
+                .getTargetedNodes()
+                .filter(this.dependencies.selection.areNodeContentsFullySelected);
             const cellContents = descendants(startTd);
-            /** @todo Test. Should probably use areNodeContentsFullySelected. */
             const areCellContentsFullySelected = cellContents
                 .filter((d) => !isBlock(d))
-                .every((child) => targetedNodes.includes(child));
+                .every((child) => selectedNodes.includes(child));
             if (areCellContentsFullySelected) {
                 const SENSITIVITY = 5;
                 if (!this._mouseMovePositionWhenAllContentsSelected) {
@@ -1216,11 +1254,11 @@ export class TablePlugin extends Plugin {
         const selectedTds = [...this.editable.querySelectorAll(".o_selected_td")].filter(
             (node) => node.isContentEditable
         );
-        if (selectedTds.length && mode === "backgroundColor") {
-            if (previewMode) {
-                // Temporarily remove backgroundColor applied by "o_selected_td" class with !important.
-                selectedTds.forEach((td) => td.classList.remove("o_selected_td"));
-            }
+        if (selectedTds.length && (mode === "backgroundColor" || (mode === "color" && !color))) {
+            // Disable the `box-shadow` while previewing the background color.
+            selectedTds.forEach((td) =>
+                td.classList.toggle("o_selected_td_bg_color_preview", previewMode)
+            );
             for (const td of selectedTds) {
                 this.dependencies.color.colorElement(td, color, mode);
                 if (color) {

@@ -44,6 +44,20 @@ class MrpProduction(models.Model):
     _order = 'priority desc, date_start asc,id'
 
     @api.model
+    def default_get(self, fields):
+        context = dict(self.env.context)
+        product_qty = context.pop('bom_overview_product_qty', False)
+        picking_type_id = context.pop('bom_overview_picking_type_id', False)
+        defaults = super(MrpProduction, self.with_context(context)).default_get(fields)
+
+        if product_qty:
+            defaults['product_qty'] = product_qty
+        if picking_type_id:
+            defaults['picking_type_id'] = picking_type_id
+
+        return defaults
+
+    @api.model
     def _get_default_date_start(self):
         if self.env.context.get('default_date_deadline'):
             date_finished = fields.Datetime.to_datetime(self.env.context.get('default_date_deadline'))
@@ -607,7 +621,7 @@ class MrpProduction(models.Model):
                     if not (bom.operation_ids and (not bom_data['parent_line'] or bom_data['parent_line'].bom_id.operation_ids != bom.operation_ids)):
                         continue
                     for operation in bom.operation_ids:
-                        if operation._skip_operation_line(bom_data['product'], production.never_product_template_attribute_value_ids):
+                        if operation._skip_operation_line(bom_data['product'] if not bom_data['parent_line'] else bom_data['parent_line']['product_id'], production.never_product_template_attribute_value_ids):
                             workorder = production.workorder_ids.filtered(lambda wo: wo.operation_id == operation and wo.operation_id.bom_id == bom)
                             if workorder:
                                 # If for some reason a non-relevant workorder is still there, e.g. after a change in never_product_template_attribute_value_ids
@@ -1056,6 +1070,11 @@ class MrpProduction(models.Model):
             workorders_to_delete.unlink()
         return super(MrpProduction, self).unlink()
 
+    @api.ondelete(at_uninstall=True)
+    def _unlink_if_not_done(self):
+        if any(mo.state == 'done' for mo in self):
+            raise UserError(_("You cannot delete a manufacturing order that is already done."))
+
     def copy_data(self, default=None):
         default = dict(default or {})
         vals_list = super().copy_data(default=default)
@@ -1185,6 +1204,10 @@ class MrpProduction(models.Model):
         ], limit=1).id
 
     def _get_move_finished_values(self, product_id, product_uom_qty, product_uom, operation_id=False, byproduct_id=False, cost_share=0):
+        group_orders = self.production_group_id.production_ids
+        move_dest_ids = self.move_dest_ids
+        if len(group_orders) > 1:
+            move_dest_ids |= group_orders[0].move_finished_ids.filtered(lambda m: m.product_id == self.product_id).move_dest_ids
         return {
             'product_id': product_id,
             'product_uom_qty': product_uom_qty,
@@ -1202,7 +1225,7 @@ class MrpProduction(models.Model):
             'origin': self.product_id.partner_ref,
             'reference_ids': self.reference_ids.ids,
             'propagate_cancel': self.propagate_cancel,
-            'move_dest_ids': [(4, x.id) for x in self.move_dest_ids if not byproduct_id],
+            'move_dest_ids': [(4, x.id) for x in move_dest_ids if not byproduct_id],
             'cost_share': cost_share,
             'production_group_id': self.production_group_id.id,
         }
@@ -1739,6 +1762,8 @@ class MrpProduction(models.Model):
     def action_cancel(self):
         """ Cancels production order, unfinished stock moves and set procurement
         orders in exception """
+        if any(mo.state == 'done' for mo in self):
+            raise UserError(_("You cannot cancel a manufacturing order that is already done."))
         self._action_cancel()
         return True
 
@@ -1764,8 +1789,8 @@ class MrpProduction(models.Model):
         self.workorder_ids.filtered(lambda x: x.state not in ['done', 'cancel']).action_cancel()
         finish_moves = self.move_finished_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
         raw_moves = self.move_raw_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
-        (finish_moves | raw_moves)._action_cancel()
-        picking_ids = self.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
+        (finish_moves | raw_moves).with_context(skip_mo_check=True)._action_cancel()
+        picking_ids = self.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel') and not x.move_ids.move_dest_ids)
         picking_ids.action_cancel()
 
         for production, documents in documents_by_production.items():
@@ -1818,9 +1843,9 @@ class MrpProduction(models.Model):
             finish_moves = order.move_finished_ids.filtered(lambda m: m.product_id == order.product_id and m.state not in ('done', 'cancel'))
             # the finish move can already be completed by the workorder.
             for move in finish_moves:
-                move.quantity = order.product_uom_id.round(order.qty_producing - order.qty_produced, rounding_method='HALF-UP')
                 if move.has_tracking != 'none' and not move.lot_ids:
                     move.lot_ids = order.lot_producing_ids.ids
+                move.quantity = order.product_uom_id.round(order.qty_producing - order.qty_produced, rounding_method='HALF-UP')
                 extra_vals = order._prepare_finished_extra_vals()
                 if extra_vals:
                     move.move_line_ids.write(extra_vals)
@@ -1866,7 +1891,7 @@ class MrpProduction(models.Model):
             'orderpoint_id': self.orderpoint_id.id,
         }
 
-    def _split_productions(self, amounts=False, cancel_remaining_qty=False, set_consumed_qty=False, skip_procurement=True):
+    def _split_productions(self, amounts=False, cancel_remaining_qty=False, set_consumed_qty=False):
         """ Splits productions into productions smaller quantities to produce, i.e. creates
         its backorders.
 
@@ -1951,7 +1976,7 @@ class MrpProduction(models.Model):
                 move_to_backorder_moves[move] = self.env['stock.move']
                 unit_factor = move.product_uom_qty / initial_qty_by_production[production]
                 initial_move_vals = move.copy_data(move._get_backorder_move_vals())[0]
-                move.with_context(do_not_unreserve=True, no_procurement=skip_procurement).product_uom_qty = production.product_qty * unit_factor
+                move.with_context(do_not_unreserve=True, no_procurement=True).product_uom_qty = production.product_qty * unit_factor
 
                 for backorder in production_to_backorders[production]:
                     move_vals = dict(
@@ -3079,3 +3104,13 @@ class MrpProduction(models.Model):
         if res:
             res = OrderedSet(topological_sort(self.fields_get(res, ('depends'))))
         return res
+
+    def _add_reference(self, reference):
+        """ link the given reference to the list of references. """
+        self.ensure_one()
+        self.reference_ids = [Command.link(reference.id)]
+
+    def _remove_reference(self, reference):
+        """ remove the given reference to the list of references. """
+        self.ensure_one()
+        self.reference_ids = [Command.unlink(reference.id)]

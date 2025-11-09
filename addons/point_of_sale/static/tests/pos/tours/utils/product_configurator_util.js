@@ -1,5 +1,3 @@
-import { queryAll } from "@odoo/hoot-dom";
-
 export function pickRadio(name) {
     return [
         {
@@ -39,7 +37,7 @@ export function pickSelect(name) {
         {
             content: `picking select attribute with name ${name}`,
             trigger: `.modal .configurator_select:has(option:contains('${name}'))`,
-            run: () => {
+            run: ({ queryAll }) => {
                 const selects = queryAll`.modal .configurator_select`;
                 for (const select of selects) {
                     const option = Array.from(select.options).find(
@@ -63,7 +61,7 @@ export function selectedSelect(name) {
         {
             content: `check selected value for select containing option "${name}"`,
             trigger: `.modal .configurator_select:has(option:contains(${name}))`,
-            run: () => {
+            run: ({ queryAll }) => {
                 const selects = queryAll`.modal .configurator_select:has(option:contains(${name}))`;
                 for (const select of selects) {
                     const selected = select.options[select.selectedIndex];
@@ -110,7 +108,7 @@ export function selectedCustomAttribute(value) {
             content: `checking selected custom attribute with value "${value}"`,
             // trigger: `.modal .custom_value:contains('${value}')`,
             trigger: `.modal .custom_value`,
-            run: () => {
+            run: ({ queryAll }) => {
                 const inputs = queryAll(".modal .custom_value");
                 for (const input of inputs) {
                     const actual = input.value?.trim();
@@ -170,6 +168,33 @@ export function isAddEnabled() {
         {
             content: "Add button is enabled",
             trigger: ".modal .btn-primary:not(.disabled)",
+        },
+    ];
+}
+
+export function checkImageVariantVisible() {
+    return [
+        {
+            content: `Check that the image is displayed`,
+            trigger: `.configurator_color.rounded-3`,
+        },
+    ];
+}
+
+export function checkImageVariantTextVisible(variantName) {
+    return [
+        {
+            content: `Check that the variant is visible`,
+            trigger: `.text-center.mt-2.small span:contains("${variantName}")`,
+        },
+    ];
+}
+
+export function checkImagePriceExtraVisible(price) {
+    return [
+        {
+            content: `Check that the extra price is displayed`,
+            trigger: `.price_extra.px-2.py-1.rounded-pill.text-bg-info:contains("${price}")`,
         },
     ];
 }

@@ -272,6 +272,7 @@ class TestFrontend(TestFrontendCommon):
         self.pos_config.is_order_printer = False
         self.pos_config.with_user(self.pos_user).open_ui()
         self.start_pos_tour('SplitBillScreenTour3')
+        self.start_pos_tour('SplitBillScreenTourPay')
 
     def test_08_refund_stay_current_table(self):
         self.pos_config.with_user(self.pos_user).open_ui()
@@ -286,7 +287,6 @@ class TestFrontend(TestFrontendCommon):
         self.start_pos_tour('SplitBillScreenTour4ProductCombo')
 
     def test_10_save_last_preparation_changes(self):
-        self.pos_config.write({'printer_ids': False})
         self.pos_config.with_user(self.pos_user).open_ui()
         self.start_pos_tour('SaveLastPreparationChangesTour')
         self.assertTrue(self.pos_config.current_session_id.order_ids.last_order_preparation_change, "There should be a last order preparation change")
@@ -318,7 +318,6 @@ class TestFrontend(TestFrontendCommon):
         self.assertEqual(order.crm_team_id.id, sale_team.id)
 
     def test_14_pos_payment_sync(self):
-        self.pos_config.write({'printer_ids': False})
         self.pos_config.with_user(self.pos_user).open_ui()
         def assert_payment(lines_count, amount):
             self.assertEqual(len(order.payment_ids), lines_count)
@@ -334,10 +333,10 @@ class TestFrontend(TestFrontendCommon):
 
     def test_15_split_bill_screen_actions(self):
         self.pos_config.with_user(self.pos_user).open_ui()
+        self.pos_config.write({'printer_ids': False})
         self.start_pos_tour('SplitBillScreenTour5Actions')
 
     def test_pos_restaurant_course(self):
-        self.pos_config.write({'printer_ids': False})
         self.pos_config.with_user(self.pos_user).open_ui()
         self.start_pos_tour('test_pos_restaurant_course')
 
@@ -612,6 +611,10 @@ class TestFrontend(TestFrontendCommon):
             'resource_calendar_id': resource_calendar
         })
         self.start_pos_tour('test_preset_timing_restaurant')
+        self.preset_eat_in.write({
+            'use_guest': True,
+        })
+        self.start_pos_tour('test_guest_count_bank_payment')
 
     def test_combo_preparation_receipt_layout(self):
         setup_product_combo_items(self)
@@ -710,6 +713,12 @@ class TestFrontend(TestFrontendCommon):
         self.assertEqual(orders[1].floating_order_name, "Test")
         self.assertEqual(orders[0].floating_order_name, False)
         self.assertIsNotNone(orders[0].table_id)
+
+    def test_cancel_order_from_ui(self):
+        self.pos_config.with_user(self.pos_user).open_ui()
+        self.start_pos_tour('test_cancel_order_from_ui')
+        order = self.pos_config.current_session_id.order_ids[0]
+        self.assertEqual(order.state, "cancel", "The order should be in cancel state")
 
     def test_sync_lines_qty_update(self):
         self.pos_config.with_user(self.pos_user).open_ui()

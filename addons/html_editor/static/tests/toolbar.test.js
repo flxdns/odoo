@@ -51,6 +51,7 @@ import { nodeSize } from "@html_editor/utils/position";
 import { expectElementCount } from "./_helpers/ui_expectations";
 import { ToolbarPlugin } from "@html_editor/main/toolbar/toolbar_plugin";
 import { ImageCrop } from "@html_editor/main/media/image_crop";
+import { Editor } from "@html_editor/editor";
 
 test.tags("desktop");
 test("toolbar is only visible when selection is not collapsed in desktop", async () => {
@@ -261,6 +262,25 @@ test("toolbar format buttons should react to format change across blocks (with w
 
 test("toolbar disable link button when selection cross blocks", async () => {
     await setupEditor("<div>[<div>a<p>b</p></div>]</div>");
+    await waitFor(".o-we-toolbar");
+    expect(".btn[name='link']").toHaveClass("disabled");
+});
+
+test("toolbar disable link button when table cells are selected", async () => {
+    await setupEditor(`
+        <table class="table table-bordered o_table">
+            <tbody>
+                <tr>
+                    <td><p>[<br></p></td>
+                    <td><p><br></p></td>
+                </tr>
+                <tr>
+                    <td><p>]<br></p></td>
+                    <td><p><br></p></td>
+                </tr>
+            </tbody>
+        </table>
+    `);
     await waitFor(".o-we-toolbar");
     expect(".btn[name='link']").toHaveClass("disabled");
 });
@@ -553,6 +573,7 @@ test("toolbar should not open on keypress tab inside table", async () => {
         </table>
     `);
     const contentAfter = unformat(`
+        <p data-selection-placeholder=""><br></p>
         <table>
             <tbody>
                 <tr>
@@ -561,6 +582,7 @@ test("toolbar should not open on keypress tab inside table", async () => {
                 </tr>
             </tbody>
         </table>
+        <p data-selection-placeholder=""><br></p>
     `);
 
     const { el } = await setupEditor(contentBefore);
@@ -699,6 +721,7 @@ test("toolbar should close on keypress tab inside table", async () => {
         </table>
     `);
     const contentAfter = unformat(`
+        <p data-selection-placeholder=""><br></p>
         <table>
             <tbody>
                 <tr>
@@ -707,6 +730,7 @@ test("toolbar should close on keypress tab inside table", async () => {
                 </tr>
             </tbody>
         </table>
+        <p data-selection-placeholder=""><br></p>
     `);
 
     const { el } = await setupEditor(contentBefore);
@@ -744,6 +768,7 @@ test("toolbar works: show the correct vertical alignment", async () => {
     expect(".dropdown-menu button.active svg[name='vertical_align_middle']").toHaveCount(1);
     expect(getContent(el)).toBe(
         unformat(`
+            <p data-selection-placeholder=""><br></p>
             <table class="table table-bordered o_table o_selected_table">
                 <tbody>
                     <tr style="height: 100px;">
@@ -758,6 +783,7 @@ test("toolbar works: show the correct vertical alignment", async () => {
                     </tr>
                 </tbody>
             </table>
+            <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>
         `)
     );
 });
@@ -788,6 +814,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
     expect(".dropdown-menu button.active svg[name='vertical_align_bottom']").toHaveCount(1);
     expect(getContent(el)).toBe(
         unformat(`
+            <p data-selection-placeholder=""><br></p>
             <table class="table table-bordered o_table o_selected_table">
                 <tbody>
                     <tr style="height: 100px;">
@@ -800,6 +827,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
                     </tr>
                 </tbody>
             </table>
+            <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>
         `)
     );
     await press(["ctrl", "z"]);
@@ -807,6 +835,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
     expect("button[name='vertical_align'] svg[name='vertical_align_top']").toHaveCount(1);
     expect(getContent(el)).toBe(
         unformat(`
+            <p data-selection-placeholder=""><br></p>
             <table class="table table-bordered o_table">
                 <tbody>
                     <tr style="height: 100px;">
@@ -819,6 +848,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
                     </tr>
                 </tbody>
             </table>
+            <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>
         `)
     );
     await press(["ctrl", "y"]);
@@ -827,6 +857,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
     expect(".dropdown-menu button.active svg[name='vertical_align_bottom']").toHaveCount(1);
     expect(getContent(el)).toBe(
         unformat(`
+            <p data-selection-placeholder=""><br></p>
             <table class="table table-bordered o_table o_selected_table">
                 <tbody>
                     <tr style="height: 100px;">
@@ -839,6 +870,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
                     </tr>
                 </tbody>
             </table>
+            <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>
         `)
     );
 });
@@ -940,7 +972,7 @@ describe("compact toolbar", () => {
     });
 
     const patchToUseOnlyTestButtons = () =>
-        patchWithCleanup(ToolbarPlugin.prototype, {
+        patchWithCleanup(Editor.prototype, {
             getResource(resourceName) {
                 const result = super.getResource(resourceName);
                 if (resourceName === "toolbar_groups") {
@@ -1329,17 +1361,17 @@ test("should not close image cropper while loading media", async () => {
     await animationFrame();
     await click('.btn[name="image_crop"]');
 
-    await waitFor('.btn[title="Discard"]', { timeout: 1000 });
-    await click('.btn[title="Discard"]');
+    await waitFor('.btn:contains("Discard")', { timeout: 1000 });
+    await click('.btn:contains("Discard")');
     await animationFrame();
 
     // Cropper should not close as the cropper still loading the image.
-    expect('.btn[title="Discard"]').toHaveCount(1);
+    expect('.btn:contains("Discard")').toHaveCount(1);
 
     // Once the image loaded we should be able to close
     await cropperReadyPromise;
-    await click('.btn[title="Discard"]');
-    await waitForNone('.btn[title="Discard"]', { timeout: 1500 });
+    await click('.btn:contains("Discard")');
+    await waitForNone('.btn:contains("Discard")', { timeout: 1500 });
 });
 
 test("toolbar shouldn't be visible if can_display_toolbar === false", async () => {
@@ -1800,4 +1832,15 @@ test("dropdown menu should not overflow scroll container", async () => {
 
     // Font selector should be visible
     expect(fontSelector).toBeVisible();
+});
+
+test.tags("desktop");
+test("toolbar should not be displayed when only invisible nodes are selected", async () => {
+    const { el } = await setupEditor(
+        `<div><p>[abc]</p><h1 class="d-none">I'm not displayed</h1></div>`
+    );
+    await waitFor(".o-we-toolbar");
+    await expectElementCount(".o-we-toolbar", 1);
+    setContent(el, `<div><p>abc</p><h1 class="d-none">[I'm not displayed]</h1></div>`);
+    await expectElementCount(".o-we-toolbar", 0);
 });

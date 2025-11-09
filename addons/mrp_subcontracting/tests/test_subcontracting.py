@@ -28,7 +28,9 @@ class TestSubcontractingBasic(TransactionCase):
         Not reusing the existing routes and operation types"""
         wh_original = self.env['stock.warehouse'].search([], limit=1)
         wh_copy = wh_original.copy(default={'name': 'Dummy Warehouse (copy)', 'code': 'Dummy'})
-        wh_original.buy_to_resupply = False
+        if 'buy_to_resupply' in wh_original._fields:
+            # If purchase is installed, the buy route would be reused instead of duplicated.
+            wh_original.buy_to_resupply = False
         wh_original.manufacture_to_resupply = False
         # Check if warehouse routes got RECREATED (instead of reused)
         route_types = [
@@ -919,6 +921,34 @@ class TestSubcontractingFlows(TestMrpSubcontractingCommon):
         self.assertRecordValues(productions, [
             {'product_qty': 19.8, 'qty_producing': 19.8, 'state': 'done'},
         ])
+
+    def test_replenish_with_subcontracting_bom(self):
+        """ Checks that a subcontracting bom cannot trigger a 'Manufacture' replenish.
+        """
+        self.assertEqual(self.finished.bom_ids.type, 'subcontract')
+        replenish_wizard = self.env['product.replenish'].create({
+            'product_id': self.finished.id,
+            'product_tmpl_id': self.finished.product_tmpl_id.id,
+            'product_uom_id': self.finished.uom_id.id,
+            'quantity': 1,
+            'warehouse_id': self.warehouse.id,
+        })
+        self.assertFalse(replenish_wizard.allowed_route_ids)
+
+    def test_subcontracting_unbuild_warning(self):
+        with Form(self.env['stock.picking']) as picking_form:
+            picking_form.picking_type_id = self.env.ref('stock.picking_type_in')
+            picking_form.partner_id = self.subcontractor_partner1
+            with picking_form.move_ids.new() as move:
+                move.product_id = self.finished
+                move.product_uom_qty = 3
+                move.quantity = 3
+            picking_receipt = picking_form.save()
+        picking_receipt.action_confirm()
+        subcontract = picking_receipt._get_subcontract_production()
+        error_message = "You can't unbuild a subcontracted Manufacturing Order."
+        with self.assertRaisesRegex(UserError, error_message):
+            subcontract.button_unbuild()
 
 
 @tagged('post_install', '-at_install')

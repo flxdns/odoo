@@ -4,6 +4,7 @@ import json
 import logging
 
 from odoo import api, fields, models, _
+from odoo.fields import Command
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
 
@@ -288,7 +289,10 @@ class SaleOrder(models.Model):
             picking_id = picking_id[0]
         else:
             picking_id = pickings[0]
-        action['context'] = dict(default_partner_id=self.partner_id.id, default_picking_type_id=picking_id.picking_type_id.id, default_origin=self.name, default_reference_ids=self.stock_reference_ids[:-1].id)
+        action['context'] = dict(
+            default_partner_id=self.partner_id.id,
+            default_picking_type_id=picking_id.picking_type_id.id,
+        )
         return action
 
     def _prepare_invoice(self):
@@ -318,3 +322,13 @@ class SaleOrder(models.Model):
 
     def _is_display_stock_in_catalog(self):
         return True
+
+    def _add_reference(self, reference):
+        """ link the given reference to the list of references. """
+        self.ensure_one()
+        self.stock_reference_ids = [Command.link(reference.id)]
+
+    def _remove_reference(self, reference):
+        """ remove the given reference to the list of references. """
+        self.ensure_one()
+        self.stock_reference_ids = [Command.unlink(reference.id)]

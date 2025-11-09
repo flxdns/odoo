@@ -4,7 +4,7 @@
 from odoo import fields
 
 from odoo.tests import Form, tagged
-from odoo.addons.stock_account.tests.test_stockvaluationlayer import TestStockValuationCommon
+from odoo.addons.stock_account.tests.common import TestStockValuationCommon
 
 
 @tagged('post_install', '-at_install')
@@ -18,6 +18,9 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'company_id': False,
         })
         cls.env['res.currency.rate'].search([]).unlink()
+        cls.customer = cls.env['res.partner'].create({
+            'name': 'Customer',
+        })
 
     #########
     # UTILS #
@@ -26,8 +29,8 @@ class TestSaleStockMargin(TestStockValuationCommon):
     def _create_sale_order(self):
         return self.env['sale.order'].create({
             'name': 'Sale order',
-            'partner_id': self.env.ref('base.partner_admin').id,
-            'partner_invoice_id': self.env.ref('base.partner_admin').id,
+            'partner_id': self.customer.id,
+            'partner_invoice_id': self.customer.id,
             'pricelist_id': self.pricelist.id,
         })
 
@@ -171,16 +174,17 @@ class TestSaleStockMargin(TestStockValuationCommon):
 
     def test_sale_stock_margin_6(self):
         """ Test that the purchase price doesn't change when there is a service product in the SO"""
+        product = self.product_standard
         service = self.env['product.product'].create({
             'name': 'Service',
             'type': 'service',
             'list_price': 100.0,
             'standard_price': 50.0})
-        self.product1.list_price = 80.0
-        self.product1.standard_price = 40.0
+        product.list_price = 80.0
+        product.standard_price = 40.0
         sale_order = self._create_sale_order()
         order_line_1 = self._create_sale_order_line(sale_order, service, 1, 100)
-        order_line_2 = self._create_sale_order_line(sale_order, self.product1, 1, 80)
+        order_line_2 = self._create_sale_order_line(sale_order, product, 1, 80)
 
         self.assertEqual(order_line_1.purchase_price, 50, "Sales order line cost should be 50.00")
         self.assertEqual(order_line_2.purchase_price, 40, "Sales order line cost should be 40.00")
@@ -257,6 +261,8 @@ class TestSaleStockMargin(TestStockValuationCommon):
         self.pricelist.currency_id = new_company_currency.id
 
         product = self._create_product()
+        product.categ_id.property_cost_method = 'fifo'
+        product.standard_price = 100
 
         incoming_picking_type = self.env['stock.picking.type'].search([('company_id', '=', new_company.id), ('code', '=', 'incoming')], limit=1)
         production_location = self.env['stock.location'].search([('company_id', '=', new_company.id), ('usage', '=', 'production')])
@@ -272,13 +278,11 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'location_dest_id': incoming_picking_type.default_location_dest_id.id,
             'product_uom': product.uom_id.id,
             'product_uom_qty': 1,
-            'price_unit': 100,
             'picking_type_id': incoming_picking_type.id,
             'picking_id': picking.id,
         })
         picking.action_confirm()
         picking.button_validate()
-
         self.pricelist.currency_id = new_company_currency.id
         partner = self.env['res.partner'].create({'name': 'Super Partner'})
         so = self.env['sale.order'].create({
@@ -352,7 +356,8 @@ class TestSaleStockMargin(TestStockValuationCommon):
 
     def test_add_standard_product_on_delivery_cost_on_sale_order(self):
         """ test that if product with standard cost method is added in delivery, the cost is computed."""
-        self.product1.write({
+        product = self.product_standard
+        product.write({
                 'standard_price': 20,
                 'list_price': 25,
                 'invoice_policy': 'order',
@@ -366,7 +371,7 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'invoice_policy': 'order',
         })
         sale_order = self._create_sale_order()
-        self._create_sale_order_line(sale_order, self.product1, 10, self.product1.list_price)
+        self._create_sale_order_line(sale_order, product, 10, product.list_price)
         sale_order.action_confirm()
         delivery = sale_order.picking_ids[0]
         with Form(delivery) as delivery_form:
@@ -383,7 +388,8 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'name': 'AVERAGE',
             'property_cost_method': 'average'
         })
-        self.product1.write({
+        self.product = self.product_avco
+        self.product.write({
                 'standard_price': 20,
                 'list_price': 25,
                 'invoice_policy': 'order',
@@ -398,7 +404,7 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'invoice_policy': 'order',
         })
         sale_order = self._create_sale_order()
-        self._create_sale_order_line(sale_order, self.product1, 10, self.product1.list_price)
+        self._create_sale_order_line(sale_order, self.product, 10, self.product.list_price)
         sale_order.action_confirm()
         delivery = sale_order.picking_ids[0]
         with Form(delivery) as delivery_form:

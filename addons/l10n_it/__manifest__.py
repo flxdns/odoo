@@ -1,7 +1,7 @@
 {
     'name': 'Italy - Accounting',
     'countries': ['it'],
-    'version': '0.7',
+    'version': '0.8',
     'depends': [
         'account',
         'base_iban',
@@ -17,7 +17,7 @@ Piano dei conti italiano di un'impresa generica.
 Italian accounting chart and localization.
     """,
     'category': 'Accounting/Localizations/Account Charts',
-    'website': 'https://www.odoo.com/documentation/master/applications/finance/fiscal_localizations/italy.html',
+    'website': 'https://www.odoo.com/documentation/latest/applications/finance/fiscal_localizations/italy.html',
     'data': [
         'data/account_account_tag.xml',
         'data/tax_report/annual_report_sections/va.xml',

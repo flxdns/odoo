@@ -72,7 +72,7 @@ class StockRule(models.Model):
 
     def _filter_warehouse_routes(self, product, warehouses, route):
         if any(rule.action == 'manufacture' for rule in route.rule_ids):
-            if product.bom_ids:
+            if any(bom.type == 'normal' for bom in product.bom_ids):
                 return super()._filter_warehouse_routes(product, warehouses, route)
             return False
         return super()._filter_warehouse_routes(product, warehouses, route)
@@ -210,6 +210,11 @@ class StockRule(models.Model):
             return delays, delay_description
         manufacture_rule.ensure_one()
         bom = values.get('bom') or self.env['mrp.bom']._bom_find(product, picking_type=manufacture_rule.picking_type_id, company_id=manufacture_rule.company_id.id)[product]
+        if not bom:
+            delays['total_delay'] += 365
+            delays['no_bom_found_delay'] += 365
+            if not bypass_delay_description:
+                delay_description.append((_('No BoM Found'), _('+ %s day(s)', 365)))
         manufacture_delay = bom.produce_delay
         delays['total_delay'] += manufacture_delay
         delays['manufacture_delay'] += manufacture_delay
@@ -238,3 +243,12 @@ class StockRule(models.Model):
         new_move_vals['production_group_id'] = move_to_copy.production_group_id.id
         new_move_vals['production_id'] = False
         return new_move_vals
+
+
+class StockRoute(models.Model):
+    _inherit = "stock.route"
+
+    def _is_valid_resupply_route_for_product(self, product):
+        if any(rule.action == 'manufacture' for rule in self.rule_ids):
+            return any(bom.type == 'normal' for bom in product.bom_ids)
+        return super()._is_valid_resupply_route_for_product(product)

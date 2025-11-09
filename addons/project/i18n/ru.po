@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-11 14:00+0000\n"
-"PO-Revision-Date: 2025-09-16 02:34+0000\n"
+"POT-Creation-Date: 2025-10-08 18:37+0000\n"
+"PO-Revision-Date: 2025-10-22 11:17+0000\n"
 "Last-Translator: \"Dylan Kiss (dyki)\" <dyki@odoo.com>\n"
 "Language-Team: Russian <https://translate.odoo.com/projects/odoo-19/project/"
 "ru/>\n"
@@ -388,8 +388,8 @@ msgid ""
 "<span class=\"fa fa-envelope-o me-2\" aria-label=\"Domain Alias\" "
 "title=\"Domain Alias\"/>"
 msgstr ""
-"<span class=\"fa fa-envelope-o me-2\" aria-label=\"Псевдоним домена\" title="
-"\"Псевдоним домена\"/>"
+"<span class=\"fa fa-envelope-o me-2\" aria-label=\"Псевдоним домена\" "
+"title=\"Псевдоним домена\"/>"
 
 #. module: project
 #: model_terms:ir.ui.view,arch_db:project.view_project_kanban
@@ -608,7 +608,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:project.field_project_task__activity_exception_decoration
 #: model:ir.model.fields,field_description:project.field_project_update__activity_exception_decoration
 msgid "Activity Exception Decoration"
-msgstr "Оформление исключения активности"
+msgstr "Оформление задачи-исключения"
 
 #. module: project
 #: model:ir.actions.act_window,name:project.mail_activity_plan_action_config_project_task_plan
@@ -1018,8 +1018,8 @@ msgid ""
 msgstr ""
 "Автоматически изменять состояние, когда клиент отвечает на отзыв для этого "
 "этапа.\n"
-" * Хороший отзыв от клиента обновит состояние до «Одобрено» (зеленый маркер)."
-"\n"
+" * Хороший отзыв от клиента обновит состояние до «Одобрено» (зеленый "
+"маркер).\n"
 " * Нейтральный или плохой отзыв установит статус Kanban на «Требуются "
 "изменения» (оранжевый маркер).\n"
 
@@ -2372,7 +2372,7 @@ msgstr "Иконка"
 #: model:ir.model.fields,help:project.field_project_task__activity_exception_icon
 #: model:ir.model.fields,help:project.field_project_update__activity_exception_icon
 msgid "Icon to indicate an exception activity."
-msgstr "Иконка для обозначения исключительной активности."
+msgstr "Иконка, указывающая на задачу-исключение."
 
 #. module: project
 #. odoo-javascript
@@ -2499,7 +2499,7 @@ msgstr ""
 #. module: project
 #. odoo-javascript
 #: code:addons/project/static/src/components/subtask_kanban_list/subtask_kanban_list.js:0
-msgid "Invalid fields: "
+msgid "Invalid Display Name"
 msgstr ""
 
 #. module: project
@@ -2553,7 +2553,8 @@ msgstr "Версия проблемы"
 #: model:ir.model.fields,help:project.field_project_project__duration_tracking
 #: model:ir.model.fields,help:project.field_project_task__duration_tracking
 msgid "JSON that maps ids from a many2one field to seconds spent"
-msgstr "JSON, который сопоставляет ID из поля many2one с потраченными секундами"
+msgstr ""
+"JSON, который сопоставляет ID из поля many2one с потраченными секундами"
 
 #. module: project
 #: model_terms:ir.actions.act_window,help:project.act_project_project_2_project_task_all
@@ -2676,6 +2677,12 @@ msgstr "Просроченные вехи"
 #: model:project.task.type,name:project.project_personal_stage_demo_4
 msgid "Later"
 msgstr "Позже"
+
+#. module: project
+#. odoo-javascript
+#: code:addons/project/static/src/js/tours/project.js:0
+msgid "Let's create a regular <b>project</b>."
+msgstr ""
 
 #. module: project
 #. odoo-javascript
@@ -3351,7 +3358,8 @@ msgstr ""
 #. odoo-python
 #: code:addons/project/models/res_partner.py:0
 msgid "Partner company cannot be different from its assigned tasks' company"
-msgstr "Компания партнера не может отличаться от компании его назначенных задач"
+msgstr ""
+"Компания партнера не может отличаться от компании его назначенных задач"
 
 #. module: project
 #: model:ir.actions.act_window,name:project.project_task_action_from_partner
@@ -4714,8 +4722,8 @@ msgstr "Название задачи..."
 msgid ""
 "Task Transferred from Project %(source_project)s to %(destination_project)s"
 msgstr ""
-"Задача перенесена из проекта %(source_project)s в проект "
-"%(destination_project)s"
+"Задача перенесена из проекта %(source_project)s в проект %"
+"(destination_project)s"
 
 #. module: project
 #: model:mail.message.subtype,description:project.mt_task_waiting
@@ -4815,12 +4823,6 @@ msgstr "Этапы задач"
 #: model:ir.model.fields,field_description:project.field_project_task__recurring_count
 msgid "Tasks in Recurrence"
 msgstr "Задачи в повторении"
-
-#. module: project
-#. odoo-python
-#: code:addons/project/models/project_task.py:0
-msgid "Tasks in a project template cannot be converted into regular tasks."
-msgstr ""
 
 #. module: project
 #: model:ir.actions.act_window,name:project.project_milestone_action_view_tasks
@@ -5158,8 +5160,8 @@ msgid ""
 "Those represent the different categories of things you have to do (e.g. "
 "\"Call\" or \"Send email\")."
 msgstr ""
-"Они представляют собой различные категории дел, которые вам нужно сделать ("
-"например, «Звонок» или «Отправить email»)."
+"Они представляют собой различные категории дел, которые вам нужно сделать "
+"(например, «Звонок» или «Отправить email»)."
 
 #. module: project
 #: model_terms:ir.ui.view,arch_db:project.edit_project
@@ -5339,7 +5341,8 @@ msgstr "Отслеживайте время, затраченное на про�
 msgid ""
 "Transparent tags are not visible in the kanban view of your projects and "
 "tasks."
-msgstr "Прозрачные теги не видны в представлении Kanban ваших проектов и задач."
+msgstr ""
+"Прозрачные теги не видны в представлении Kanban ваших проектов и задач."
 
 #. module: project
 #: model:ir.model.fields.selection,name:project.selection__project_task_type__rating_status_period__bimonthly
@@ -5357,7 +5360,7 @@ msgstr "Две задачи не могут зависеть друг от др�
 #: model:ir.model.fields,help:project.field_project_task__activity_exception_decoration
 #: model:ir.model.fields,help:project.field_project_update__activity_exception_decoration
 msgid "Type of the exception activity on record."
-msgstr "Тип Дела для исключения в записи."
+msgstr "Тип задачи-исключения в записи."
 
 #. module: project
 #. odoo-python

@@ -47,6 +47,7 @@ class PaymentProvider(models.Model):
         string="Published",
         help="Whether the provider is visible on the website or not. Tokens remain functional but "
              "are only visible on manage forms.",
+        copy=False,
     )
     company_id = fields.Many2one(  # Indexed to speed-up ORM searches (from ir_rule or others)
         string="Company", comodel_name='res.company', default=lambda self: self.env.company.id,
@@ -532,10 +533,9 @@ class PaymentProvider(models.Model):
         :return: None
         :raise UserError: If the provider is disabled.
         """
-        if self.state != 'disabled':
-            self.is_published = not self.is_published
-        else:
+        if self.state == 'disabled' and not self.is_published:
             raise UserError(_("You cannot publish a disabled provider."))
+        self.is_published = not self.is_published
 
     def action_view_payment_methods(self):
         self.ensure_one()
@@ -968,11 +968,15 @@ class PaymentProvider(models.Model):
         :param str provider_code: The code of the provider to setup.
         :return: None
         """
-        main_provider = self.search(self._get_provider_domain(provider_code, **kwargs), limit=1)
-        for company in self.env['res.company'].search([]):
-            if company != main_provider.company_id and not company.parent_id:
-                # Create a copy of the provider for each company.
-                main_provider.copy({'company_id': company.id})
+        existing_providers = self.search(self._get_provider_domain(provider_code, **kwargs))
+        main_provider = existing_providers[:1]
+        existing_provider_companies = existing_providers.company_id
+        companies_needing_provider = self.env['res.company'].search([
+            ('id', 'not in', existing_provider_companies.ids), ('parent_id', '=', False)
+        ])
+        for company in companies_needing_provider:
+            # Create a copy of the provider for each company.
+            main_provider.copy({'company_id': company.id})
 
     @api.model
     def _remove_provider(self, provider_code, **kwargs):

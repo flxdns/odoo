@@ -7,7 +7,7 @@ from lxml import etree
 from pytz import timezone
 from odoo import Command
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from odoo.tests import tagged
 from odoo.tools import misc
 from odoo.addons.l10n_sa_edi.tests.common import TestSaEdiCommon
@@ -208,6 +208,7 @@ class TestEdiZatca(TestSaEdiCommon):
         """Test invoice generation with downpayment scenarios."""
         if 'sale' not in self.env["ir.module.module"]._installed():
             self.skipTest("Sale module is not installed")
+        self.env.user.group_ids += self.env.ref('sales_team.group_sale_salesman')
 
         freeze = datetime(2022, 9, 5, 8, 20, 2, tzinfo=timezone('Etc/GMT-3'))
 
@@ -217,7 +218,7 @@ class TestEdiZatca(TestSaEdiCommon):
             'currency_id': self.env.ref('base.SAR').id
         })
         with freeze_time(freeze):
-            sale_order = self.env['sale.order'].create({
+            sale_order = self.env['sale.order'].sudo().create({
                 'partner_id': self.partner_sa.id,
                 'pricelist_id': saudi_pricelist.id,
                 'order_line': [
@@ -240,7 +241,7 @@ class TestEdiZatca(TestSaEdiCommon):
             }
 
             # Create downpayment invoice
-            downpayment_wizard = self.env['sale.advance.payment.inv'].with_context(context).create({
+            downpayment_wizard = self.env['sale.advance.payment.inv'].with_context(context).sudo().create({
                 'advance_payment_method': 'fixed',
                 'fixed_amount': 115,
             })
@@ -248,12 +249,17 @@ class TestEdiZatca(TestSaEdiCommon):
             downpayment.invoice_date_due = '2022-09-22'
 
             # Create final invoice
-            final_wizard = self.env['sale.advance.payment.inv'].with_context(context).create({})
+            final_wizard = self.env['sale.advance.payment.inv'].with_context(context).sudo().create({})
             final = final_wizard._create_invoices(sale_order)
             final.invoice_line_ids.filtered('is_downpayment').name = 'Down Payment'
             final.invoice_date_due = '2022-09-22'
 
         # Test invoices
+        additional_xpath = f'''
+            <xpath expr="(//*[local-name()='PaymentMeans']/*[local-name()='InstructionID'])" position="after">
+                <cbc:InstructionNote xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">{sale_order.name}</cbc:InstructionNote>
+            </xpath>
+        '''
         for move, test_file in [
             (downpayment, "downpayment_invoice"),
             (final, "final_invoice")
@@ -262,6 +268,7 @@ class TestEdiZatca(TestSaEdiCommon):
                 self._test_document_generation(
                     test_file_path=f'l10n_sa_edi/tests/test_files/{test_file}.xml',
                     expected_xpath=self.invoice_applied_xpath,
+                    additional_xpath=additional_xpath,
                     freeze_time_at=freeze,
                     move=move,
                 )
@@ -353,3 +360,35 @@ class TestEdiZatca(TestSaEdiCommon):
         qr_company_name = decoded_qr[2:2 + length].decode()
 
         self.assertEqual(xml_company_name, qr_company_name, "Seller name on the xml does not match the seller name on the QR code")
+
+    def test_company_missing_country_on_standard_invoice(self):
+        """Test standard invoice generation when the company does not have a country set."""
+        # setup new company to prevent errors in other tests
+        vals = self._get_company_vals({"name": "SA Company (Minus Country)"})
+        new_company = self._create_company(**vals)
+
+        new_company_customer_invoice_journal = self.env['account.journal'].search([
+            ('company_id', '=', new_company.id),
+            ('type', '=', 'sale'),
+        ], limit=1)
+        new_company_customer_invoice_journal._l10n_sa_load_edi_demo_data()
+
+        new_company.country_id = False
+
+        # missing tax should always cause a user error, even if the country is blank
+        move_data = {
+            'name': 'INV/2022/00014',
+            'invoice_date': '2022-09-05',
+            'invoice_date_due': '2022-09-22',
+            'company_id': new_company,
+            'partner_id': self.partner_sa,
+            'invoice_line_ids': [{
+                'product_id': self.product_a.id,
+                'price_unit': self.product_a.standard_price,
+                'tax_ids': False,
+            }],
+        }
+
+        invoice = self._create_test_invoice(**move_data)
+        with self.assertRaises(UserError):
+            invoice.action_post()

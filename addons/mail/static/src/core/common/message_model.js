@@ -1,10 +1,13 @@
+import { isEmptyBlock } from "@html_editor/utils/dom_info";
+
 import { fields, Record } from "@mail/core/common/record";
 import {
     EMOJI_REGEX,
     convertBrToLineBreak,
     decorateEmojis,
+    generateEmojisOnHtml,
+    getNonEditableMentions,
     htmlToTextContentInline,
-    prettifyMessageContent,
 } from "@mail/utils/common/format";
 
 import { browser } from "@web/core/browser/browser";
@@ -77,6 +80,15 @@ export class Message extends Record {
             }
             const div = createElementWithContent("div", this.body);
             return Boolean(div.querySelector("a:not([data-oe-model])"));
+        },
+    });
+    hasMailNotificationSummary = fields.Attr(false, {
+        compute() {
+            return Boolean(
+                createDocumentFragmentFromContent(this.body).querySelector(
+                    '[summary="o_mail_notification"]'
+                )
+            );
         },
     });
     /** @type {number|string} */
@@ -161,6 +173,7 @@ export class Message extends Record {
     /** @type {undefined|Boolean} */
     needaction;
     starred = false;
+    showTranslation = false;
 
     /**
      * True if the backend would technically allow edition
@@ -299,6 +312,8 @@ export class Message extends Record {
     isTranslatable(thread) {
         return (
             !this.isEmpty &&
+            !this.isBodyEmpty &&
+            !this.hasMailNotificationSummary &&
             this.store.hasMessageTranslationFeature &&
             !["discuss.channel", "mail.box"].includes(thread?.model)
         );
@@ -316,22 +331,7 @@ export class Message extends Record {
     });
     isBodyEmpty = fields.Attr(undefined, {
         compute() {
-            return (
-                !this.body ||
-                [
-                    "",
-                    "<p></p>",
-                    "<p><br></p>",
-                    "<p><br/></p>",
-                    "<div></div>",
-                    "<div><br></div>",
-                    "<div><br/></div>",
-                ].includes(
-                    this.body
-                        .replace('<span class="o-mail-Message-edited"></span>', "")
-                        .replace(/\s/g, "")
-                )
-            );
+            return !this.body || isEmptyBlock(createElementWithContent("div", this.body));
         },
     });
 
@@ -560,7 +560,7 @@ export class Message extends Record {
             attachment_tokens: attachments
                 .concat(this.attachment_ids)
                 .map((attachment) => attachment.ownership_token),
-            body: await prettifyMessageContent(body, { validMentions }),
+            body: await generateEmojisOnHtml(body),
             partner_ids: validMentions?.partners?.map((partner) => partner.id),
             role_ids: validMentions?.roles?.map((role) => role.id),
         };
@@ -578,14 +578,25 @@ export class Message extends Record {
     }
 
     /** @param {import("models").Thread} thread the thread where the message is being viewed when starting edition */
-    enterEditMode(thread) {
+    async enterEditMode(thread) {
+        const doc = createDocumentFragmentFromContent(this.body);
+        const validChannels = (
+            await Promise.all(
+                Array.from(
+                    doc.querySelectorAll(".o_channel_redirect[data-oe-model='discuss.channel']")
+                ).map(async (el) =>
+                    this.store.Thread.getOrFetch({ id: el.dataset.oeId, model: "discuss.channel" })
+                )
+            )
+        ).filter((channel) => channel?.exists());
         const text = convertBrToLineBreak(this.body);
         if (thread?.messageInEdition) {
             thread.messageInEdition.composer = undefined;
         }
         this.composer = {
+            composerHtml: getNonEditableMentions(this.body),
+            mentionedChannels: validChannels,
             mentionedPartners: this.partner_ids,
-            composerHtml: this.body,
             selection: {
                 start: text.length,
                 end: text.length,
@@ -610,7 +621,19 @@ export class Message extends Record {
      * @returns {string}
      */
     getPersonaName(persona) {
-        return this.thread?.getPersonaName(persona) || persona.displayName || persona.name;
+        return this.thread?.getPersonaName(persona) || persona?.displayName || persona?.name;
+    }
+
+    async onClickToggleTranslation() {
+        if (!this.translationValue) {
+            const { error, lang_name, body } = await rpc("/mail/message/translate", {
+                message_id: this.id,
+            });
+            this.translationValue = body && markup(body);
+            this.translationSource = lang_name;
+            this.translationErrors = error;
+        }
+        this.showTranslation = !this.showTranslation && Boolean(this.translationValue);
     }
 
     async react(content) {

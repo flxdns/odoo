@@ -8,14 +8,16 @@ import {
     isProtected,
     isProtecting,
     paragraphRelatedElementsSelector,
+    isContentEditable,
 } from "@html_editor/utils/dom_info";
 import { _t } from "@web/core/l10n/translation";
 import { MediaDialog, TABS } from "./media_dialog/media_dialog";
 import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
-import { rightPos } from "@html_editor/utils/position";
+import { boundariesOut, rightPos } from "@html_editor/utils/position";
 import { withSequence } from "@html_editor/utils/resource";
 import { closestElement } from "@html_editor/utils/dom_traversal";
 import { fuzzyLookup } from "@web/core/utils/search";
+import { FORMATTABLE_TAGS } from "@html_editor/utils/formatting";
 
 /**
  * @typedef { Object } MediaShared
@@ -80,7 +82,9 @@ export class MediaPlugin extends Plugin {
         functional_empty_node_predicates: isMediaElement,
 
         selectors_for_feff_providers: () =>
-            `:is(${paragraphRelatedElementsSelector}) :is(${ICON_SELECTOR})`,
+            `:is(${paragraphRelatedElementsSelector}, ${FORMATTABLE_TAGS.join(
+                ", "
+            )}, A) > :is(${ICON_SELECTOR})`,
     };
 
     setup() {
@@ -107,10 +111,12 @@ export class MediaPlugin extends Plugin {
     }
 
     isEditableMediaElement(node) {
-        return (
+        if (
             (isMediaElement(node) || node.nodeName === "IMG") &&
-            node.classList.contains(EDITABLE_MEDIA_CLASS)
-        );
+            (node.classList.contains(EDITABLE_MEDIA_CLASS) || isContentEditable(node))
+        ) {
+            return true;
+        }
     }
 
     replaceImage() {
@@ -226,10 +232,17 @@ export class MediaPlugin extends Plugin {
     /**
      * @param {import("@html_editor/core/selection_plugin").SelectionData} param0
      */
-    selectAroundIcon({ editableSelection: { anchorNode, isCollapsed } }) {
-        if (isCollapsed && closestElement(anchorNode, isIconElement)) {
-            this.dependencies.selection.selectAroundNonEditable();
+    selectAroundIcon({ editableSelection }) {
+        if (!editableSelection.isCollapsed) {
+            return;
         }
+        const iconEl = closestElement(editableSelection.anchorNode, isIconElement);
+        if (!iconEl) {
+            return;
+        }
+        const [anchorNode, anchorOffset, focusNode, focusOffset] = boundariesOut(iconEl);
+        const iconOuterBoundaries = { anchorNode, anchorOffset, focusNode, focusOffset };
+        this.dependencies.selection.setSelection(iconOuterBoundaries);
     }
 
     /**

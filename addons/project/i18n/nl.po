@@ -8,15 +8,16 @@
 # Yenthe Van Ginneken <yenthespam@gmail.com>, 2022
 # Martin Trigaux, 2023
 # Jolien De Paepe, 2023
-# Erwin van der Ploeg <erwin@odooexperts.nl>, 2023
+# Erwin van der Ploeg <erwin@odooexperts.nl>, 2023, 2025.
 # "Dylan Kiss (dyki)" <dyki@odoo.com>, 2025.
+# Bren Driesen <brdri@odoo.com>, 2025.
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-11 14:00+0000\n"
-"PO-Revision-Date: 2025-09-14 08:06+0000\n"
-"Last-Translator: \"Dylan Kiss (dyki)\" <dyki@odoo.com>\n"
+"POT-Creation-Date: 2025-10-08 18:37+0000\n"
+"PO-Revision-Date: 2025-10-23 12:36+0000\n"
+"Last-Translator: Bren Driesen <brdri@odoo.com>\n"
 "Language-Team: Dutch <https://translate.odoo.com/projects/odoo-19/project/nl/"
 ">\n"
 "Language: nl\n"
@@ -29,7 +30,7 @@ msgstr ""
 #. module: project
 #: model:ir.model.fields.selection,name:project.selection__project_project__privacy_visibility__portal
 msgid " All internal users and invited portal users"
-msgstr ""
+msgstr " Alle interne gebruikers en uitgenodigde portaalgebruikers"
 
 #. module: project
 #: model:ir.model.fields,field_description:project.field_project_project__rating_count
@@ -286,6 +287,114 @@ msgid ""
 "</div>\n"
 "            "
 msgstr ""
+"<div>\n"
+"    <t t-set=\"access_token\" t-value=\"object._rating_get_access_token()\"/>"
+"\n"
+"    <t t-set=\"partner\" t-value=\"object._rating_get_partner()\"/>\n"
+"    <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" "
+"style=\"width:100%; margin:0px auto;\">\n"
+"    <tbody>\n"
+"        <tr><td valign=\"top\" style=\"font-size: 13px;\">\n"
+"           <t t-if=\"partner.name\">\n"
+"                Hallo <t t-out=\"partner.name or ''\">Brandon Freeman</t>,<"
+"br/><br/>\n"
+"           </t>\n"
+"           <t t-else=\"\">\n"
+"                Hallo,<br/><br/>\n"
+"           </t>\n"
+"            Neem even de tijd om onze dienstverlening te beoordelen bij de "
+"taak <strong t-out=\"object.name or ''\">Planning en budget</strong>,\n"
+"           <t t-if=\"object._rating_get_operator().name\">\n"
+"                toegewezen aan <strong t-out="
+"\"object._rating_get_operator().name or ''\">Mitchell Admin</strong>.<br/>\n"
+"           </t>\n"
+"           <t t-else=\"\">\n"
+"                .<br/>\n"
+"           </t>\n"
+"        </td></tr>\n"
+"        <tr><td style=\"text-align: center;\">\n"
+"            <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width="
+"\"590\" style="
+"\"width:100%; margin: 32px 0px 32px 0px; display: inline-table;\">\n"
+"                <tr><td style=\"font-size: 13px;text-align:center;\">\n"
+"                    <strong>Vertel ons wat je van onze diensten "
+"vindt</strong><br/>\n"
+"                    <span style=\"font-size: 12px; opacity: 0.5; color: "
+"#454748;\">(klik op een van deze smileys)</span>\n"
+"                </td></tr>\n"
+"                <tr><td style=\"font-size: 13px;\">\n"
+"                    <table style="
+"\"width:100%;text-align:center;margin-top:2rem;\">\n"
+"                        <tr>\n"
+"                            <td>\n"
+"                                <a t-attf-href=\"/rate/{{ access_token }}/5\""
+" t-att-class=\"'pe-none' if object._rating_get_operator() else ''\">\n"
+"                                    <img alt=\"Happy\" src="
+"\"/rating/static/src/img/rating_5.png\" title=\"Happy\"/>\n"
+"                                </a>\n"
+"                            </td>\n"
+"                            <td>\n"
+"                                <a t-attf-href=\"/rate/{{ access_token }}/3\""
+" t-att-class=\"'pe-none' if object._rating_get_operator() else ''\">\n"
+"                                    <img alt=\"Neutral\" src="
+"\"/rating/static/src/img/rating_3.png\" title=\"Neutral\"/>\n"
+"                                </a>\n"
+"                            </td>\n"
+"                            <td>\n"
+"                                <a t-attf-href=\"/rate/{{ access_token }}/1\""
+" t-att-class=\"'pe-none' if object._rating_get_operator() else ''\">\n"
+"                                    <img alt=\"Unhappy\" src="
+"\"/rating/static/src/img/rating_1.png\" title=\"Unhappy\"/>\n"
+"                                </a>\n"
+"                            </td>\n"
+"                        </tr>\n"
+"                    </table>\n"
+"                </td></tr>\n"
+"            </table>\n"
+"        </td></tr>\n"
+"        <tr><td valign=\"top\" style=\"font-size: 13px;\">\n"
+"            We waarderen je feedback enorm, die helpt ons om continu te "
+"verbeteren.\n"
+"            <t t-if=\"object.stage_id.rating_status == 'stage'\">\n"
+"                <br/><span style="
+"\"margin: 0; font-size: 12px; opacity: 0.5; color: #454748;\">Deze "
+"tevredenheidsenquête is verzonden omdat je taak is verplaatst naar de fase "
+"<b t-out=\"object.stage_id.name or ''\">In behandeling</b> </span>\n"
+"            </t>\n"
+"            <t t-if=\"object.stage_id.rating_status == 'periodic'\">\n"
+"                <br/><span style="
+"\"margin: 0; font-size: 12px; opacity: 0.5; color: #454748;\">Deze "
+"tevredenheidsenquête wordt <b t-out="
+"\"object.stage_id.rating_status_period or ''\">wekelijks</b> verstuurd "
+"zolang de taak in de fase <b t-out=\"object.stage_id.name or ''\">In "
+"behandeling</b> blijft.</span>\n"
+"            </t>\n"
+"        </td></tr>\n"
+"        <tr><td><br/>Met vriendelijke groeten,</td></tr>\n"
+"        <tr><td>\n"
+"           <t t-out=\"object.project_id.company_id.name or ''\""
+">JouwBedrijf</t>\n"
+"        </td></tr>\n"
+"        <tr><td style=\"opacity: 0.5;\">\n"
+"            <t t-out=\"object.project_id.company_id.phone or ''\">1 "
+"650-123-4567</t>\n"
+"            <t t-if=\"object.project_id.company_id.email\">\n"
+"                | <a t-attf-href="
+"\"mailto:{{ object.project_id.company_id.email }}\" style=\"text-"
+"decoration:none; color: #454748;\" t-out=\""
+"object.project_id.company_id.email or ''\">info@jouwbedrijf.com</a>\n"
+"            </t>\n"
+"            <t t-if=\"object.project_id.company_id.website\">\n"
+"                | <a t-attf-href="
+"\"{{ object.project_id.company_id.website }}\" style=\"text-decoration:none; "
+"color: #454748;\" t-out=\"object.project_id.company_id.website or ''\""
+">http://www.voorbeeld.com</a>\n"
+"            </t>\n"
+"        </td></tr>\n"
+"    </tbody>\n"
+"    </table>\n"
+"</div>\n"
+"            "
 
 #. module: project
 #: model:mail.template,body_html:project.project_done_email_template
@@ -309,21 +418,21 @@ msgid ""
 "            "
 msgstr ""
 "<div>\n"
-"    Beste <t t-out=\"object.partner_id.name or 'customer'\">Brandon "
-"Freeman</t>,<br/>\n"
+"    Beste <t t-out=\"object.partner_id.name or 'customer'\">Brandon Freeman</"
+"t>,<br/>\n"
 "    Het is mij een genoegen om je te laten weten dat we het project '<strong "
 "t-out=\"object.name or ''\">Renovaties</strong>' succesvol hebben afgerond.\n"
 "    <t t-if=\"user.signature\" data-o-mail-quote-container=\"1\">\n"
 "        <br/>\n"
-"        <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out="
-"\"user.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"        <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-"
+"out=\"user.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></"
+"div>\n"
 "    </t>\n"
 "</div>\n"
-"<br/><span style="
-"\"margin: 0px 0px 0px 0px; font-size: 12px; opacity: 0.5; color: #454748;\" "
-"groups=\"project.group_project_stages\">Je ontvangt deze e-mail omdat je "
-"project is verplaatst naar de fase <b t-out=\"object.stage_id.name or ''\""
-">Gereed</b></span>\n"
+"<br/><span style=\"margin: 0px 0px 0px 0px; font-size: 12px; opacity: 0.5; "
+"color: #454748;\" groups=\"project.group_project_stages\">Je ontvangt deze e-"
+"mail omdat je project is verplaatst naar de fase <b t-"
+"out=\"object.stage_id.name or ''\">Gereed</b></span>\n"
 "            "
 
 #. module: project
@@ -350,20 +459,21 @@ msgid ""
 "        "
 msgstr ""
 "<div>\n"
-"    Beste <t t-out=\"object.partner_id.name or 'customer'\">Brandon "
-"Freeman</t>,<br/><br/>\n"
+"    Beste <t t-out=\"object.partner_id.name or 'customer'\">Brandon Freeman</"
+"t>,<br/><br/>\n"
 "    Bedankt voor je bericht. We waarderen je interesse in onze producten/"
 "diensten.<br/>\n"
-"    Ons team bekijkt je aanvraag en zal zo snel mogelijk reageren op je "
-"e-mail.<br/>\n"
+"    Ons team bekijkt je aanvraag en zal zo snel mogelijk reageren op je e-"
+"mail.<br/>\n"
 "    Als je in de tussentijd nog vragen of opmerkingen hebt, laat het ons "
 "gerust weten. We helpen je graag verder.<br/><br/>\n"
 "    Bedankt voor je geduld.<br/>\n"
 "    Met vriendelijke groet,\n"
 "    <t t-if=\"user.signature\" data-o-mail-quote-container=\"1\">\n"
 "        <br/>\n"
-"        <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out="
-"\"user.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"        <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-"
+"out=\"user.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></"
+"div>\n"
 "    </t>\n"
 "</div>\n"
 "        "
@@ -379,14 +489,13 @@ msgid ""
 "                            <i class=\"fa fa-fw o_button_icon fa-frown-o "
 "text-danger\" invisible=\"rating_avg &gt;= 2.33\" title=\"Unhappy\"/>"
 msgstr ""
-"<i class=\"fa fa-fw o_button_icon fa-smile-o text-success\" invisible="
-"\"rating_avg < 3.66\" title=\"Tevreden\"/>\n"
-"                            <i class="
-"\"fa fa-fw o_button_icon fa-meh-o text-warning\" invisible="
-"\"rating_avg < 2.33 or rating_avg >= 3.66\" title=\"Neutraal\"/>\n"
-"                            <i class="
-"\"fa fa-fw o_button_icon fa-frown-o text-danger\" invisible="
-"\"rating_avg >= 2.33\" title=\"Ontevreden\"/>"
+"<i class=\"fa fa-fw o_button_icon fa-smile-o text-success\" "
+"invisible=\"rating_avg < 3.66\" title=\"Tevreden\"/>\n"
+"                            <i class=\"fa fa-fw o_button_icon fa-meh-o text-"
+"warning\" invisible=\"rating_avg < 2.33 or rating_avg >= 3.66\" "
+"title=\"Neutraal\"/>\n"
+"                            <i class=\"fa fa-fw o_button_icon fa-frown-o "
+"text-danger\" invisible=\"rating_avg >= 2.33\" title=\"Ontevreden\"/>"
 
 #. module: project
 #: model_terms:ir.ui.view,arch_db:project.edit_project
@@ -1067,8 +1176,8 @@ msgid ""
 msgstr ""
 "Wijzig automatisch de fase wanneer de klant reageert op de feedback voor "
 "deze fase.\n"
-" * Goede feedback van de klant zal de fase updaten naar 'Goedgekeurd' ("
-"groene stip).\n"
+" * Goede feedback van de klant zal de fase updaten naar 'Goedgekeurd' "
+"(groene stip).\n"
 " * Neutrale of slechte feedback zal de kanbanfase naar 'Wijzigingen "
 "gevraagd' updaten (oranje stip).\n"
 
@@ -1744,7 +1853,7 @@ msgstr "Dagen"
 #: model:ir.model.fields,field_description:project.field_project_project__rotting_days
 #: model:ir.model.fields,field_description:project.field_project_task__rotting_days
 msgid "Days Rotting"
-msgstr ""
+msgstr "Dagen verouderd"
 
 #. module: project
 #: model:ir.model.fields,field_description:project.field_report_project_task_user__delay_endings_days
@@ -1954,7 +2063,7 @@ msgstr "Negeren"
 #: model:ir.model.fields,field_description:project.field_res_users__display_name
 #: model:ir.model.fields,field_description:project.field_task_share_wizard__display_name
 msgid "Display Name"
-msgstr "Schermnaam"
+msgstr "Weergavenaam"
 
 #. module: project
 #. odoo-python
@@ -2548,8 +2657,8 @@ msgstr ""
 #. module: project
 #. odoo-javascript
 #: code:addons/project/static/src/components/subtask_kanban_list/subtask_kanban_list.js:0
-msgid "Invalid fields: "
-msgstr "Ongeldige velden: "
+msgid "Invalid Display Name"
+msgstr "Ongeldige weergavenaam"
 
 #. module: project
 #: model:ir.model.fields.selection,name:project.selection__project_project__privacy_visibility__invited_users
@@ -2725,6 +2834,12 @@ msgstr "Late milstones"
 #: model:project.task.type,name:project.project_personal_stage_demo_4
 msgid "Later"
 msgstr "Later"
+
+#. module: project
+#. odoo-javascript
+#: code:addons/project/static/src/js/tours/project.js:0
+msgid "Let's create a regular <b>project</b>."
+msgstr ""
 
 #. module: project
 #. odoo-javascript
@@ -4163,7 +4278,7 @@ msgstr "Rol naar gebruikers"
 #: model:ir.model.fields,field_description:project.field_project_task__is_rotting
 #: model_terms:ir.ui.view,arch_db:project.view_task_search_form
 msgid "Rotting"
-msgstr ""
+msgstr "Verouderd"
 
 #. module: project
 #. odoo-javascript
@@ -4862,13 +4977,6 @@ msgstr "Takenfases"
 #: model:ir.model.fields,field_description:project.field_project_task__recurring_count
 msgid "Tasks in Recurrence"
 msgstr "Taak wordt herhaald"
-
-#. module: project
-#. odoo-python
-#: code:addons/project/models/project_task.py:0
-msgid "Tasks in a project template cannot be converted into regular tasks."
-msgstr ""
-"Taken in een projectsjabloon kunnen niet worden omgezet in gewone taken."
 
 #. module: project
 #: model:ir.actions.act_window,name:project.project_milestone_action_view_tasks
@@ -5759,9 +5867,9 @@ msgid ""
 "of projects linked to %(company_name)s."
 msgstr ""
 "Je kunt het bedrijf van deze fase niet wijzigen naar %(company_name)s omdat "
-"het momenteel projecten bevat die zijn gekoppeld aan %(project_company_name)"
-"s. Zorg ervoor dat deze fase uitsluitend bestaat uit projecten gekoppeld aan "
-"%(company_name)s."
+"het momenteel projecten bevat die zijn gekoppeld aan %"
+"(project_company_name)s. Zorg ervoor dat deze fase uitsluitend bestaat uit "
+"projecten gekoppeld aan %(company_name)s."
 
 #. module: project
 #. odoo-javascript
@@ -5784,7 +5892,8 @@ msgstr "Je kunt subtaken openen vanuit de kanban-kaart!"
 #. module: project
 #: model:ir.model.constraint,message:project.constraint_project_task_recurring_task_has_no_parent
 msgid "You cannot convert this task into a sub-task because it is recurrent."
-msgstr "Je kunt deze taak niet omzetten in een subtaak omdat deze recurrent is."
+msgstr ""
+"Je kunt deze taak niet omzetten in een subtaak omdat deze recurrent is."
 
 #. module: project
 #: model_terms:ir.ui.view,arch_db:project.view_project_project_stage_delete_wizard
@@ -6118,6 +6227,13 @@ msgstr "👤 Niet toegewezen"
 #: code:addons/project/models/project_task.py:0
 msgid "🔒 Private"
 msgstr "🔒 Privé"
+
+#~ msgid "Invalid fields: "
+#~ msgstr "Ongeldige velden: "
+
+#~ msgid "Tasks in a project template cannot be converted into regular tasks."
+#~ msgstr ""
+#~ "Taken in een projectsjabloon kunnen niet worden omgezet in gewone taken."
 
 #~ msgid ""
 #~ "\n"

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import requests
 import subprocess
 import tempfile
 import typing
@@ -464,7 +465,7 @@ class IrActionsReport(models.Model):
         :param image_format union['jpg', 'png']: format of the image
         :return list[bytes|None]:
         """
-        if (modules.module.current_test or tools.config['test_enable']) and not self.env.context.get('force_image_rendering'):
+        if modules.module.current_test:
             return [None] * len(bodies)
         wkhtmltoimage_version = _wkhtml().wkhtmltoimage_version
         if not wkhtmltoimage_version or wkhtmltoimage_version < parse_version('0.12.0'):
@@ -1194,3 +1195,31 @@ class IrActionsReport(models.Model):
             if records.filtered_domain(literal_eval(action.domain)):
                 valid_action_report_ids.append(action.id)
         return valid_action_report_ids
+
+    @api.model
+    def _prepare_local_attachments(self, attachments):
+        attachments_with_data = self.env['ir.attachment']
+        for attachment in attachments:
+            if not attachment._is_remote_source():
+                attachments_with_data |= attachment
+            elif (stream := attachment._to_http_stream()) and stream.url:
+                # call `_to_http_stream()` in case the attachment is an url or cloud storage attachment
+                try:
+                    response = requests.get(stream.url, timeout=10)
+                    response.raise_for_status()
+                    attachment_data = response.content
+                    if not attachment_data:
+                        _logger.warning("Attachment %s at with URL %s retrieved successfully, but no content was found.", attachment.id, attachment.url)
+                        continue
+                    attachments_with_data |= self.env['ir.attachment'].new({
+                        'db_datas': attachment_data,
+                        'name': attachment.name,
+                        'mimetype': attachment.mimetype,
+                        'res_model': attachment.res_model,
+                        'res_id': attachment.res_id
+                    })
+                except requests.exceptions.RequestException as e:
+                    _logger.error("Request for attachment %s with URL %s failed: %s", attachment.id, attachment.url, e)
+            else:
+                _logger.error("Unexpected edge case: Is not being considered as a local or remote attachment, attachment ID:%s will be skipped.", attachment.id)
+        return attachments_with_data

@@ -56,7 +56,7 @@ class HrEmployee(models.Model):
         'hr.version',
         compute='_compute_current_version_id',
         store=True,
-        groups="hr.group_hr_user",
+        bypass_search_access=True,
     )
     current_date_version = fields.Date(
         related="current_version_id.date_version",
@@ -198,6 +198,7 @@ class HrEmployee(models.Model):
         'hr.employee.category', 'employee_category_rel',
         'employee_id', 'category_id', groups="hr.group_hr_user",
         string='Tags')
+    tz = fields.Selection(tracking=True)
     # misc
     color = fields.Integer('Color Index', default=0)
     barcode = fields.Char(string="Badge ID", help="ID used for employee identification.", groups="hr.group_hr_user", copy=False)
@@ -489,7 +490,9 @@ class HrEmployee(models.Model):
     @api.depends('current_version_id')
     @api.depends_context('version_id')
     def _compute_version_id(self):
-        context_version = self.env['hr.version'].browse(self.env.context.get('version_id', False))
+        context_version_id = self.env.context.get('version_id', False)
+        context_version = self.env['hr.version'].browse(context_version_id).exists() if context_version_id else self.env['hr.version']
+
         for employee in self:
             if context_version.employee_id == self:
                 version = context_version
@@ -515,12 +518,14 @@ class HrEmployee(models.Model):
                 order='date_version desc',
                 limit=1,
             )
+            new_current_version = False
             if version:
-                employee.current_version_id = version
+                new_current_version = version
             elif employee.version_ids:
-                employee.current_version_id = employee.version_ids[0]
-            else:
-                employee.current_version_id = False
+                new_current_version = employee.version_ids[0]
+            # To not trigger computed properties if still the same version
+            if employee.current_version_id != new_current_version:
+                employee.current_version_id = new_current_version
 
     def _cron_update_current_version_id(self):
         self.search([])._compute_current_version_id()
@@ -682,10 +687,12 @@ class HrEmployee(models.Model):
         version_domain = Domain('contract_date_start', '!=', False)
         if self.ids:
             version_domain &= Domain('employee_id', 'in', self.ids)
+        elif not any(self._ids):  # onchange
+            version_domain &= Domain('employee_id', 'in', self._origin.ids)
         if date_start:
-            version_domain &= Domain('contract_date_end', '=', False) | Domain('contract_date_end', '>', date_start)
+            version_domain &= Domain('contract_date_end', '=', False) | Domain('contract_date_end', '>=', date_start)
         if date_end:
-            version_domain &= Domain('contract_date_start', '<', date_end)
+            version_domain &= Domain('contract_date_start', '<=', date_end)
         if domain:
             version_domain &= domain
         all_versions = self.env['hr.version']._read_group(
@@ -695,7 +702,8 @@ class HrEmployee(models.Model):
         )
         contract_versions_by_employee = defaultdict(lambda: defaultdict(lambda: self.env["hr.version"]))
         for employee, _date_version, version in all_versions:
-            contract_versions_by_employee[employee.id][version.contract_date_start] |= version
+            first_version = next(iter(version), version)
+            contract_versions_by_employee[employee.id][first_version.contract_date_start] |= version
         return contract_versions_by_employee
 
     def _get_all_contract_dates(self):
@@ -896,15 +904,6 @@ class HrEmployee(models.Model):
             permit_no = '_' + employee.permit_no if employee.permit_no else ''
             employee.work_permit_name = "%swork_permit%s" % (name, permit_no)
 
-    @api.depends('distance_home_work', 'distance_home_work_unit')
-    def _compute_km_home_work(self):
-        for employee in self:
-            employee.km_home_work = employee.distance_home_work * 1.609 if employee.distance_home_work_unit == "miles" else employee.distance_home_work
-
-    def _inverse_km_home_work(self):
-        for employee in self:
-            employee.distance_home_work = employee.km_home_work / 1.609 if employee.distance_home_work_unit == "miles" else employee.km_home_work
-
     def _get_partner_count_depends(self):
         return ['user_id']
 
@@ -1058,6 +1057,7 @@ class HrEmployee(models.Model):
         # cache, and interpreted as an access error
         if field_names is None:
             field_names = [field.name for field in self._determine_fields_to_fetch()]
+        field_names = [f_name for f_name in field_names if f_name != 'current_version_id']
         self._check_private_fields(field_names)
         self.flush_model(field_names)
         # HACK: suppress warning if domain is optimized for another model
@@ -1076,6 +1076,7 @@ class HrEmployee(models.Model):
         # cache, and interpreted as an access error
         if field_names is None:
             field_names = [field.name for field in self._determine_fields_to_fetch()]
+        field_names = [f_name for f_name in field_names if f_name != 'current_version_id']
         self._check_private_fields(field_names)
         self.flush_recordset(field_names)
         public = self.env['hr.employee.public'].browse(self._ids)
@@ -1153,9 +1154,16 @@ class HrEmployee(models.Model):
     def get_views(self, views, options=None):
         if self.browse().has_access('read'):
             return super().get_views(views, options)
-        res = self.env['hr.employee.public'].get_views(views, options)
-        res['models'].update({'hr.employee': res['models']['hr.employee.public']})
-        return res
+        # returning public employee data would cause a traceback when building
+        # the private employee xml view
+        raise RedirectWarning(
+            message=_(
+            """You are not allowed to access "Employee" (hr.employee) records.
+We can redirect you to the public employee list."""
+            ),
+            action=self.env.ref('hr.hr_employee_public_action').id,
+            button_text=_("Employees profile"),
+        )
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None, *, bypass_access=False, **kwargs):
@@ -1509,7 +1517,7 @@ class HrEmployee(models.Model):
 
         date_from = fields.Date.to_date(date_from)
         for employee in self:
-            employee_versions_sudo = employee.version_ids.sudo().filtered(lambda v: v._is_in_contract(date_from))
+            employee_versions_sudo = employee.sudo().version_ids.filtered(lambda v: v._is_in_contract(date_from))
             if employee_versions_sudo:
                 res[employee.id] = employee_versions_sudo[0].resource_calendar_id.sudo(False)
         return res
@@ -1525,7 +1533,7 @@ class HrEmployee(models.Model):
                 # if employee is under fully flexible contract, use timezone of the employee
                 calendar_tz = timezone(version.resource_calendar_id.tz) if version.resource_calendar_id else timezone(employee.resource_id.tz)
                 date_start = datetime.combine(
-                    version.date_start,
+                    version.contract_date_start,
                     time(0, 0, 0)
                 ).replace(tzinfo=calendar_tz).astimezone(utc)
                 if version.date_end:
@@ -1610,12 +1618,15 @@ class HrEmployee(models.Model):
                 domain=[('company_id', 'in', [False, self.company_id.id])])[self.resource_id.id]
             return calendar_intervals
         duration_data = Intervals()
+        version_prev = datetime.combine(valid_versions[0].date_start, time.min, employee_tz)
         for version in valid_versions:
             version_start = datetime.combine(version.date_start, time.min, employee_tz)
+            contract_start = datetime.combine(version.contract_date_start, time.min, employee_tz)
             version_end = datetime.combine(version.date_end or date.max, time.max, employee_tz)
             calendar = version.resource_calendar_id or version.company_id.resource_calendar_id
+            start_date = version_start if version_prev < version_start else contract_start
             version_intervals = calendar._work_intervals_batch(
-                                    max(date_from, version_start),
+                                    max(date_from, start_date),
                                     min(date_to, version_end),
                                     tz=employee_tz,
                                     resources=self.resource_id,

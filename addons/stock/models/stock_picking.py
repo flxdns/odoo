@@ -11,7 +11,7 @@ from odoo import _, api, fields, models
 from odoo.addons.stock.models.stock_move import PROCUREMENT_PRIORITIES
 from odoo.addons.web.controllers.utils import clean_action
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.fields import Domain, Command
 from odoo.tools import format_datetime, format_date, groupby, OrderedSet, SQL
 from odoo.tools.float_utils import float_compare, float_is_zero
 
@@ -657,6 +657,8 @@ class StockPicking(models.Model):
     is_locked = fields.Boolean(default=True, copy=False, help='When the picking is not done this allows changing the '
                                'initial demand. When the picking is done this allows '
                                'changing the done quantities.')
+    is_date_editable = fields.Boolean(
+        'Is Scheduled Date Editable', compute='_compute_is_date_editable')
 
     weight_bulk = fields.Float(
         'Bulk Weight', compute='_compute_bulk_weight', help="Total weight of products which are not in a package.")
@@ -742,6 +744,13 @@ class StockPicking(models.Model):
     def _compute_is_signed(self):
         for picking in self:
             picking.is_signed = picking.signature
+
+    def _compute_is_date_editable(self):
+        for picking in self:
+            if picking.state in ['done', 'cancel']:
+                picking.is_date_editable = not picking.is_locked
+            else:
+                picking.is_date_editable = True
 
     @api.depends('state', 'picking_type_code', 'scheduled_date', 'move_ids', 'move_ids.forecast_availability', 'move_ids.forecast_expected_date')
     def _compute_products_availability(self):
@@ -1339,7 +1348,8 @@ class StockPicking(models.Model):
         no_quantities_done_ids = set()
         pickings_without_quantities = self.env['stock.picking']
         for picking in self:
-            if all(float_is_zero(move.quantity, precision_digits=precision_digits) for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel'))):
+            has_pick = any(move.picked and move.state not in ('done', 'cancel') for move in picking.move_ids)
+            if all(float_is_zero(move.quantity, precision_digits=precision_digits) for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel') and (not has_pick or m.picked))):
                 pickings_without_quantities |= picking
 
         pickings_using_lots = self.filtered(lambda p: p.picking_type_id.use_create_lots or p.picking_type_id.use_existing_lots)
@@ -2082,6 +2092,16 @@ class StockPicking(models.Model):
     def _can_return(self):
         self.ensure_one()
         return self.state == 'done'
+
+    def _add_reference(self, reference=False):
+        """ link the given reference to the list of references. """
+        self.ensure_one()
+        self.move_ids.reference_ids = [Command.link(reference.id)]
+
+    def _remove_reference(self, reference):
+        """ remove the given reference to the list of references. """
+        self.ensure_one()
+        self.move_ids.reference_ids = [Command.unlink(reference.id)]
 
     def _prepare_entire_pack_move_line_vals(self, packages):
         """ Prepares the move line values for every packages within packages and their children that contain products.

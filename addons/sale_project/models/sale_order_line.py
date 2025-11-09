@@ -78,13 +78,16 @@ class SaleOrderLine(models.Model):
         milestones_lines.qty_delivered_method = 'milestones'
         super(SaleOrderLine, self - milestones_lines)._compute_qty_delivered_method()
 
-    @api.depends('qty_delivered_method', 'product_uom_qty', 'reached_milestones_ids.quantity_percentage')
+    @api.depends('product_uom_qty', 'reached_milestones_ids.quantity_percentage')
     def _compute_qty_delivered(self):
+        super()._compute_qty_delivered()
+
+    def _prepare_qty_delivered(self):
         lines_by_milestones = self.filtered(lambda sol: sol.qty_delivered_method == 'milestones')
-        super(SaleOrderLine, self - lines_by_milestones)._compute_qty_delivered()
+        delivered_qties = super(SaleOrderLine, self - lines_by_milestones)._prepare_qty_delivered()
 
         if not lines_by_milestones:
-            return
+            return delivered_qties
 
         project_milestone_read_group = self.env['project.milestone']._read_group(
             [('sale_line_id', 'in', lines_by_milestones.ids), ('is_reached', '=', True)],
@@ -94,7 +97,8 @@ class SaleOrderLine(models.Model):
         reached_milestones_per_sol = {sale_line.id: percentage_sum for sale_line, percentage_sum in project_milestone_read_group}
         for line in lines_by_milestones:
             sol_id = line.id or line._origin.id
-            line.qty_delivered = reached_milestones_per_sol.get(sol_id, 0.0) * line.product_uom_qty
+            delivered_qties[line] = reached_milestones_per_sol.get(sol_id, 0.0) * line.product_uom_qty
+        return delivered_qties
 
     @api.depends('order_id.partner_id', 'product_id', 'order_id.project_id')
     def _compute_analytic_distribution(self):
@@ -107,7 +111,7 @@ class SaleOrderLine(models.Model):
             if line.analytic_distribution:
                 applied_root_plans = self.env['account.analytic.account'].browse(
                     list({int(account_id) for ids in line.analytic_distribution for account_id in ids.split(",")})
-                ).root_plan_id
+                ).exists().root_plan_id
                 if accounts_to_add := project._get_analytic_accounts().filtered(
                     lambda account: account.root_plan_id not in applied_root_plans
                 ):
@@ -182,7 +186,6 @@ class SaleOrderLine(models.Model):
             'company_id': self.company_id.id,
             'allow_billable': True,
             'user_id': self.product_id.project_template_id.user_id.id,
-            'allow_milestones': self.product_id.service_type == 'milestones',
         }
 
     def _timesheet_create_project(self):
@@ -433,6 +436,8 @@ class SaleOrderLine(models.Model):
         self.ensure_one()
         if self.product_id.service_policy != 'delivered_milestones':
             return
+        if not self.project_id.allow_milestones:
+            self.project_id.allow_milestones = True
         if (milestones := project.milestone_ids.filtered(lambda milestone: not milestone.sale_line_id)):
             milestones.write({
                 'sale_line_id': self.id,
